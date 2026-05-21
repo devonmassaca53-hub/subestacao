@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>SCADA Industrial | Subestação Norte</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #050505;
+            font-family: 'Segoe UI', 'Roboto', 'Courier New', monospace;
+            height: 100vh;
+            overflow: hidden;
+            color: #e0e0e0;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: #050505;
+        }
+
+        .header {
+            background: #0a0a0a;
+            border-bottom: 2px solid #1f1f1f;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            font-size: 24px;
+            color: #4ade80;
+        }
+
+        .title {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            border-left: 1px solid #333;
+            padding-left: 10px;
+        }
+
+        .firebase-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #111;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+
+        .datetime {
+            display: flex;
+            gap: 15px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            background: #111;
+            padding: 4px 12px;
+            border-radius: 6px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #1a1a1a;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+        }
+
+        .main-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: #0a0a0a;
+            border-right: 1px solid #1f1f1f;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .sidebar nav {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #b0b0b0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: #1a1a1a;
+        }
+
+        .nav-item.active {
+            background: #1f1f1f;
+            color: #4ade80;
+            border-left: 3px solid #4ade80;
+        }
+
+        .diagram-container {
+            flex: 1;
+            background: #0c0c0c;
+            overflow: auto;
+            padding: 16px;
+        }
+
+        .diagram-card {
+            background: #0f0f0f;
+            border: 1px solid #222;
+            border-radius: 8px;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .diagram-title {
+            padding: 10px 16px;
+            border-bottom: 1px solid #222;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #aaa;
+        }
+
+        .diagram-svg {
+            padding: 16px;
+            overflow-x: auto;
+            overflow-y: auto;
+            min-height: 650px;
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            height: auto;
+            min-width: 1200px;
+            background: #0a0a0a;
+            border-radius: 6px;
+        }
+
+        .right-panel {
+            width: 340px;
+            background: #0a0a0a;
+            border-left: 1px solid #1f1f1f;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .panel-section {
+            padding: 14px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #9ca3af;
+        }
+
+        .alarm-list, .event-list {
+            max-height: 180px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .alarm-item {
+            background: #1a1a1a;
+            border-left: 3px solid #ef4444;
+            padding: 6px 8px;
+            font-size: 0.7rem;
+            font-family: monospace;
+        }
+
+        .measure-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .measure-card {
+            background: #111;
+            padding: 6px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .measure-label {
+            font-size: 0.6rem;
+            color: #9ca3af;
+        }
+
+        .measure-value {
+            font-size: 1rem;
+            font-weight: bold;
+            font-family: monospace;
+            color: #facc15;
+        }
+
+        .event-item {
+            background: #111;
+            padding: 5px 8px;
+            font-size: 0.65rem;
+            border-left: 2px solid #3b82f6;
+            margin-bottom: 4px;
+        }
+
+        .footer {
+            background: #070707;
+            border-top: 1px solid #1a1a1a;
+            padding: 4px 16px;
+            font-size: 0.65rem;
+            display: flex;
+            justify-content: space-between;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+
+        .breaker-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #111;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .breaker-control:hover {
+            background: #1a1a1a;
+        }
+
+        .breaker-status {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #2c2c2c; border-radius: 4px; }
+
+        @media (max-width: 1024px) {
+            .sidebar { width: 200px; }
+            .right-panel { width: 280px; }
+        }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .right-panel { width: 100%; position: absolute; right: 0; top: 60px; background: rgba(10,10,10,0.95); backdrop-filter: blur(8px); height: auto; max-height: 60%; overflow-y: auto; border-left: none; border-top: 1px solid #333; z-index: 10; }
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCyQhsbwVuRxG8O6VPLH4ea4jZ4UC6Zmb0",
+            authDomain: "substacao.firebaseapp.com",
+            projectId: "substacao",
+            storageBucket: "substacao.firebasestorage.app",
+            messagingSenderId: "349722774775",
+            appId: "1:349722774775:web:179cf758e55514a09bd7f2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        window.db = database;
+        window.ref = ref;
+        window.onValue = onValue;
+        window.set = set;
+        window.firebaseReady = true;
+        console.log("Firebase conectado");
+    </script>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div class="logo-area">
+            <div class="logo">⚡</div>
+            <div class="title">SUBESTAÇÃO NORTE</div>
+            <div class="subtitle">CONTROLE ESP32 + FIREBASE</div>
+        </div>
+        <div class="datetime">
+            <span id="liveClock">--:--:--</span>
+            <span id="liveDate">--/--/----</span>
+        </div>
+        <div class="user-info">
+            <span>👤</span> <span>OPERADOR: ENG. SISTEMAS</span>
+            <span id="firebaseStatus" class="firebase-status">🔄 Conectando...</span>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <div class="sidebar">
+            <nav>
+                <div class="nav-item active">📊 Visão Geral</div>
+                <div class="nav-item">⚡ Unifilar</div>
+                <div class="nav-item">🔔 Alarmes</div>
+                <div class="nav-item">📈 Tendências</div>
+                <div class="nav-item">📋 Eventos</div>
+                <div class="nav-item">📄 Relatórios</div>
+                <div class="nav-item">🔧 Manobras</div>
+                <div class="nav-item">📡 Medições</div>
+                <div class="nav-item">⚙️ Qualidade</div>
+                <div class="nav-item">🛠️ Configurações</div>
+                <div class="nav-item">👥 Usuários</div>
+                <div class="nav-item">🚪 Logout</div>
+            </nav>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-card">
+                <div class="diagram-title">DIAGRAMA UNIFILAR - ENTRADA 138kV → TRANSFORMADOR → BARRAMENTO 13,8 kV</div>
+                <div class="diagram-svg">
+                    <svg viewBox="0 0 1200 750" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                                <polygon points="0 0, 8 4, 0 8" fill="#facc15" />
+                            </marker>
+                        </defs>
+                        <g stroke="#1a1a1a" stroke-width="0.5">
+                            <line x1="0" y1="50" x2="1200" y2="50"/><line x1="0" y1="100" x2="1200" y2="100"/>
+                            <line x1="0" y1="150" x2="1200" y2="150"/><line x1="0" y1="200" x2="1200" y2="200"/>
+                            <line x1="0" y1="250" x2="1200" y2="250"/><line x1="0" y1="300" x2="1200" y2="300"/>
+                            <line x1="0" y1="350" x2="1200" y2="350"/><line x1="0" y1="400" x2="1200" y2="400"/>
+                            <line x1="0" y1="450" x2="1200" y2="450"/><line x1="0" y1="500" x2="1200" y2="500"/>
+                            <line x1="0" y1="550" x2="1200" y2="550"/><line x1="0" y1="600" x2="1200" y2="600"/>
+                            <line x1="0" y1="650" x2="1200" y2="650"/><line x1="0" y1="700" x2="1200" y2="700"/>
+                            <line x1="150" y1="0" x2="150" y2="750"/><line x1="300" y1="0" x2="300" y2="750"/>
+                            <line x1="450" y1="0" x2="450" y2="750"/><line x1="600" y1="0" x2="600" y2="750"/>
+                            <line x1="750" y1="0" x2="750" y2="750"/><line x1="900" y1="0" x2="900" y2="750"/>
+                            <line x1="1050" y1="0" x2="1050" y2="750"/>
+                        </g>
+
+                        <text x="600" y="45" fill="#facc15" text-anchor="middle" font-size="12" font-weight="bold">ALIMENTAÇÃO 138 kV</text>
+                        <line x1="600" y1="60" x2="600" y2="90" stroke="#facc15" stroke-width="3"/>
+                        <polygon points="595,85 605,85 600,95" fill="#facc15"/>
+
+                        <g id="breakerQ1Group" transform="translate(600, 125)">
+                            <rect x="-16" y="-10" width="32" height="20" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ1Rect"/>
+                            <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="8" font-weight="bold">Q1</text>
+                            <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">ESP32</text>
+                        </g>
+
+                        <line x1="600" y1="145" x2="600" y2="170" stroke="#4ade80" stroke-width="3"/>
+
+                        <g transform="translate(600, 210)">
+                            <circle cx="-22" cy="0" r="20" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+                            <circle cx="22" cy="0" r="20" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+                            <line x1="-36" y1="0" x2="36" y2="0" stroke="#4ade80" stroke-width="2"/>
+                            <text x="0" y="32" fill="#e5e5e5" text-anchor="middle" font-size="10">TR-01</text>
+                            <text x="0" y="44" fill="#9ca3af" text-anchor="middle" font-size="8">138/13,8 kV</text>
+                            <text x="0" y="56" fill="#facc15" text-anchor="middle" font-size="8">25 MVA</text>
+                        </g>
+
+                        <line x1="600" y1="230" x2="600" y2="280" stroke="#4ade80" stroke-width="3"/>
+
+                        <g id="breakerQ2Group" transform="translate(600, 310)">
+                            <rect x="-16" y="-10" width="32" height="20" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ2Rect"/>
+                            <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="8" font-weight="bold">Q2</text>
+                            <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">ESP32</text>
+                        </g>
+
+                        <line x1="600" y1="330" x2="600" y2="360" stroke="#4ade80" stroke-width="4"/>
+
+                        <line x1="120" y1="380" x2="1080" y2="380" stroke="#4ade80" stroke-width="5"/>
+                        <text x="40" y="385" fill="#4ade80" font-size="10">13,8 kV BUS</text>
+
+                        <g id="feedersContainer"></g>
+
+                        <g transform="translate(20, 620)">
+                            <rect x="0" y="0" width="340" height="110" fill="#0a0a0a" stroke="#2a2a2a" stroke-width="1" rx="4"/>
+                            <text x="10" y="18" fill="#e5e5e5" font-size="10" font-weight="bold">LEGENDA DE SÍMBOLOS</text>
+                            <line x1="20" y1="32" x2="50" y2="32" stroke="#4ade80" stroke-width="3"/>
+                            <text x="60" y="35" fill="#9ca3af" font-size="9">Tensão presente / Energizado</text>
+                            <rect x="20" y="44" width="24" height="12" fill="#166534" stroke="#4ade80" stroke-width="1"/>
+                            <text x="60" y="53" fill="#9ca3af" font-size="9">Disjuntor fechado</text>
+                            <rect x="20" y="60" width="24" height="12" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
+                            <text x="60" y="69" fill="#9ca3af" font-size="9">Disjuntor aberto</text>
+                            <circle cx="32" cy="80" r="6" fill="none" stroke="#3b82f6" stroke-width="1"/>
+                            <text x="60" y="83" fill="#9ca3af" font-size="9">Clique para detalhes</text>
+                            <rect x="20" y="93" width="24" height="8" fill="#3b82f6" opacity="0.5"/>
+                            <text x="60" y="99" fill="#9ca3af" font-size="9">Controle ESP32</text>
+                        </g>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-section">
+                <div class="section-title"><span>🔔</span> ALARMES ATIVOS</div>
+                <div id="alarmList" class="alarm-list"></div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title"><span>🎛️</span> CONTROLE ESP32</div>
+                <div id="espControls">
+                    <div class="breaker-control" id="ctrlQ1">
+                        <span>🔌 Disjuntor Q1 (Entrada)</span>
+                        <div class="breaker-status" id="statusQ1" style="background:#4ade80;"></div>
+                    </div>
+                    <div class="breaker-control" id="ctrlQ2">
+                        <span>⚡ Disjuntor Q2 (Saída TR)</span>
+                        <div class="breaker-status" id="statusQ2" style="background:#4ade80;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title"><span>📡</span> MEDIÇÕES GERAIS</div>
+                <div class="measure-grid" id="measurementsPanel"></div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title"><span>📋</span> ÚLTIMOS EVENTOS</div>
+                <div id="eventList" class="event-list"></div>
+                <div style="margin-top: 12px;">
+                    <div class="section-title"><span>🔧</span> ESTADO DO SISTEMA</div>
+                    <div style="background: #111; padding: 8px; border-radius: 6px; display: flex; justify-content: space-between;">
+                        <span>Disjuntores Fechados:</span>
+                        <span id="closedBreakersCount" style="color: #4ade80; font-weight: bold;">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <span>⚡ SCADA INDUSTRIAL - FIREBASE REALTIME + ESP32</span>
+        <span>🔄 DADOS EM TEMPO REAL</span>
+    </div>
+</div>
+
+<script type="module">
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const database = window.db;
+    let firebaseEnabled = !!window.firebaseReady;
+
+    // Estados dos disjuntores principais
+    let breakersState = { q1: true, q2: true };
+    
+    // Dados dos alimentadores
+    const feedersData = [
+        { id: 'F01', name: 'Alimentador Sul', code: '52T1', voltage: 13.8, current: 187, power: 4.2, status: 'closed' },
+        { id: 'F02', name: 'Alimentador Norte', code: '52T2', voltage: 13.8, current: 156, power: 3.5, status: 'closed' },
+        { id: 'F03', name: 'Alimentador Leste', code: '52L3', voltage: 13.8, current: 210, power: 4.8, status: 'closed' },
+        { id: 'F04', name: 'Alimentador Oeste', code: '52L4', voltage: 13.8, current: 98, power: 2.2, status: 'open' },
+        { id: 'F05', name: 'Alimentador Centro', code: '52C5', voltage: 13.8, current: 134, power: 3.0, status: 'closed' },
+        { id: 'F06', name: 'Alimentador Reserva', code: '52R6', voltage: 13.8, current: 0, power: 0, status: 'open' }
+    ];
+
+    // Alarmes e eventos
+    let alarms = [
+        { id: 1, time: new Date().toLocaleTimeString('pt-BR'), message: '52L4 - Disjuntor aberto', status: 'active' }
+    ];
+    let events = [
+        { id: 1, time: new Date().toLocaleTimeString('pt-BR'), desc: 'Sistema SCADA inicializado' }
+    ];
+    
+    // Medições simuladas
+    let measurements = {
+        bus138kV: 138.24,
+        freq: 59.98,
+        powerActive: 87.3,
+        powerReactive: 12.3,
+        powerFactor: 0.96,
+        energyDay: 25410
+    };
+
+    // Relógio
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('liveClock').innerText = now.toLocaleTimeString('pt-BR');
+        document.getElementById('liveDate').innerText = now.toLocaleDateString('pt-BR');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Renderizar alimentadores no SVG
+    function renderFeedersSVG() {
+        const container = document.getElementById('feedersContainer');
+        if (!container) return;
+        let svg = '';
+        const startX = 200, step = 130;
+        feedersData.forEach((f, i) => {
+            const x = startX + i * step;
+            const isClosed = f.status === 'closed';
+            const color = isClosed ? '#4ade80' : '#ef4444';
+            const fillColor = isClosed ? '#166534' : '#7f1d1d';
+            svg += `
+                <g transform="translate(${x}, 0)">
+                    <line x1="0" y1="380" x2="0" y2="420" stroke="#6b7280" stroke-width="2" />
+                    <rect x="-10" y="425" width="20" height="10" fill="none" stroke="#9ca3af" stroke-width="1.5" />
+                    <line x1="-6" y1="430" x2="6" y2="430" stroke="#9ca3af" stroke-width="2" />
+                    <g class="breaker-${f.id}" style="cursor:pointer;">
+                        <rect x="-14" y="450" width="28" height="16" rx="2" fill="${fillColor}" stroke="${color}" stroke-width="1.5" />
+                        <text x="0" y="462" fill="#e5e5e5" text-anchor="middle" font-size="8">${f.code}</text>
+                    </g>
+                    <line x1="0" y1="466" x2="0" y2="488" stroke="#9ca3af" stroke-width="2" />
+                    <line x1="-6" y1="488" x2="6" y2="488" stroke="#9ca3af" stroke-width="2" />
+                    <line x1="-3" y1="492" x2="3" y2="492" stroke="#9ca3af" stroke-width="2" />
+                    <line x1="0" y1="496" x2="0" y2="500" stroke="#9ca3af" stroke-width="2" />
+                    <circle cx="0" cy="515" r="8" fill="none" stroke="#6b7280" stroke-width="1.5" />
+                    <text x="0" y="518" fill="#9ca3af" text-anchor="middle" font-size="6">I</text>
+                    <text x="0" y="540" fill="#e5e5e5" text-anchor="middle" font-size="10" font-weight="bold">${f.name}</text>
+                    <text x="0" y="554" fill="#facc15" text-anchor="middle" font-size="9">${f.voltage} kV</text>
+                    <text x="0" y="568" fill="#4ade80" text-anchor="middle" font-size="9">${f.current} A</text>
+                    <text x="0" y="582" fill="#60a5fa" text-anchor="middle" font-size="9">${f.power} MW</text>
+                    <rect x="-22" y="595" width="44" height="16" rx="2" fill="${fillColor}" stroke="${color}" stroke-width="1" />
+                    <text x="0" y="606" fill="#e5e5e5" text-anchor="middle" font-size="8">${isClosed ? 'FECHADO' : 'ABERTO'}</text>
+                    <circle cx="0" cy="625" r="10" fill="none" stroke="#3b82f6" stroke-width="1" class="info-${f.id}" style="cursor:pointer;" />
+                    <text x="0" y="628" fill="#3b82f6" text-anchor="middle" font-size="7" class="info-${f.id}">i</text>
+                </g>
+            `;
+        });
+        container.innerHTML = svg;
+        
+        // Adicionar eventos de clique
+        feedersData.forEach(f => {
+            const breakerBtn = document.querySelector(`.breaker-${f.id}`);
+            if (breakerBtn) breakerBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFeeder(f.id); });
+            const infoBtn = document.querySelector(`.info-${f.id}`);
+            if (infoBtn) infoBtn.addEventListener('click', (e) => { e.stopPropagation(); showDetails(f); });
+        });
+    }
+
+    // Atualizar UI dos disjuntores principais
+    function updateMainUI() {
+        const q1Rect = document.getElementById('breakerQ1Rect');
+        const q2Rect = document.getElementById('breakerQ2Rect');
+        if (q1Rect) { 
+            q1Rect.setAttribute('fill', breakersState.q1 ? '#166534' : '#7f1d1d'); 
+            q1Rect.setAttribute('stroke', breakersState.q1 ? '#4ade80' : '#ef4444'); 
+        }
+        if (q2Rect) { 
+            q2Rect.setAttribute('fill', breakersState.q2 ? '#166534' : '#7f1d1d'); 
+            q2Rect.setAttribute('stroke', breakersState.q2 ? '#4ade80' : '#ef4444'); 
+        }
+        const statusQ1 = document.getElementById('statusQ1');
+        const statusQ2 = document.getElementById('statusQ2');
+        if (statusQ1) statusQ1.style.background = breakersState.q1 ? '#4ade80' : '#ef4444';
+        if (statusQ2) statusQ2.style.background = breakersState.q2 ? '#4ade80' : '#ef4444';
+    }
+
+    // Adicionar evento ao log
+    function addEvent(desc) {
+        events.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), desc });
+        if (events.length > 20) events.pop();
+        renderEvents();
+    }
+
+    // Renderizar alarmes
+    function renderAlarms() {
+        const container = document.getElementById('alarmList');
+        const active = alarms.filter(a => a.status === 'active');
+        if (!active.length) { 
+            container.innerHTML = '<div style="color:#6b7280; padding:8px;">Nenhum alarme ativo</div>'; 
+            return; 
+        }
+        container.innerHTML = active.map(a => `<div class="alarm-item"><div>${a.time} - ${a.message}</div><span style="color:#ef4444;">ATIVO</span></div>`).join('');
+    }
+
+    // Renderizar eventos
+    function renderEvents() {
+        const container = document.getElementById('eventList');
+        container.innerHTML = events.slice(0, 8).map(e => `<div class="event-item"><div class="event-time">${e.time}</div><div>${e.desc}</div></div>`).join('');
+    }
+
+    // Atualizar medições na tela
+    function updateMeasurementsUI() {
+        const grid = document.getElementById('measurementsPanel');
+        grid.innerHTML = `
+            <div class="measure-card"><div class="measure-label">Tensão 138 kV</div><div class="measure-value">${measurements.bus138kV.toFixed(2)} kV</div></div>
+            <div class="measure-card"><div class="measure-label">Tensão 13,8 kV</div><div class="measure-value">${breakersState.q2 ? '13.81' : '0.00'} kV</div></div>
+            <div class="measure-card"><div class="measure-label">Frequência</div><div class="measure-value">${measurements.freq.toFixed(2)} Hz</div></div>
+            <div class="measure-card"><div class="measure-label">Potência Ativa</div><div class="measure-value">${measurements.powerActive.toFixed(1)} MW</div></div>
+            <div class="measure-card"><div class="measure-label">Potência Reativa</div><div class="measure-value">${measurements.powerReactive.toFixed(1)} Mvar</div></div>
+            <div class="measure-card"><div class="measure-label">Fator Potência</div><div class="measure-value">${measurements.powerFactor.toFixed(2)}</div></div>
+            <div class="measure-card"><div class="measure-label">Energia do Dia</div><div class="measure-value">${measurements.energyDay} MWh</div></div>
+        `;
+    }
+
+    // Contar disjuntores fechados
+    function updateClosedCount() {
+        const closed = feedersData.filter(f => f.status === 'closed').length + (breakersState.q1 ? 1 : 0) + (breakersState.q2 ? 1 : 0);
+        document.getElementById('closedBreakersCount').innerText = `${closed} / ${feedersData.length + 2}`;
+    }
+
+    // Enviar comando via Firebase
+    async function sendCommand(path, value) {
+        if (firebaseEnabled && database) {
+            try {
+                await set(ref(database, `comandos/${path}`), { value, timestamp: Date.now() });
+                addEvent(`Comando enviado: ${path} = ${value}`);
+            } catch(e) { 
+                console.error(e); 
+                addEvent(`Falha ao enviar comando ${path}`);
+                // Fallback local se falhar
+                executeLocalCommand(path, value);
+            }
+        } else {
+            addEvent(`[SIMULAÇÃO] Comando: ${path} = ${value}`);
+            executeLocalCommand(path, value);
+        }
+    }
+
+    // Execução local de comandos (fallback)
+    function executeLocalCommand(path, value) {
+        if (path === 'disjuntor_q1') {
+            breakersState.q1 = value;
+            updateMainUI();
+            addEvent(`Local: Q1 ${value ? 'fechado' : 'aberto'}`);
+            if (!value) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q1 - Disjuntor aberto', status: 'active' });
+            else alarms = alarms.filter(a => !a.message.includes('Q1'));
+            renderAlarms();
+            updateClosedCount();
+        } else if (path === 'disjuntor_q2') {
+            breakersState.q2 = value;
+            updateMainUI();
+            addEvent(`Local: Q2 ${value ? 'fechado' : 'aberto'}`);
+            if (!value) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q2 - Disjuntor aberto', status: 'active' });
+            else alarms = alarms.filter(a => !a.message.includes('Q2'));
+            renderAlarms();
+            updateClosedCount();
+        } else if (path.startsWith('alimentadores/')) {
+            const code = path.split('/')[1];
+            const feeder = feedersData.find(f => f.code === code);
+            if (feeder) {
+                feeder.status = value ? 'closed' : 'open';
+                if (value) {
+                    feeder.current = Math.floor(Math.random() * 200) + 50;
+                    feeder.power = +(feeder.current * 0.022).toFixed(1);
+                    alarms = alarms.filter(a => !a.message.includes(feeder.code));
+                } else {
+                    feeder.current = 0;
+                    feeder.power = 0;
+                    alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: `${feeder.code} - Disjuntor aberto`, status: 'active' });
+                }
+                addEvent(`Local: ${feeder.code} ${value ? 'fechado' : 'aberto'}`);
+                renderFeedersSVG();
+                renderAlarms();
+                updateClosedCount();
+            }
+        }
+    }
+
+    // Alternar disjuntor principal
+    async function toggleMain(breaker) {
+        const newState = !breakersState[breaker];
+        await sendCommand(breaker === 'q1' ? 'disjuntor_q1' : 'disjuntor_q2', newState);
+    }
+
+    // Alternar alimentador
+    async function toggleFeeder(id) {
+        if (!breakersState.q1 || !breakersState.q2) {
+            addEvent(`Falha: Barramento desenergizado, não é possível operar ${id}`);
+            return;
+        }
+        const feeder = feedersData.find(f => f.id === id);
+        if (!feeder) return;
+        const newState = feeder.status !== 'closed';
+        await sendCommand(`alimentadores/${feeder.code}`, newState);
+    }
+
+    // Mostrar detalhes do equipamento
+    function showDetails(f) {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000;';
+        modal.innerHTML = `
+            <div style="background:#1e1e1e; border:1px solid #3b82f6; border-radius:12px; width:340px; padding:20px;">
+                <h3 style="color:#facc15; margin-bottom:12px;">${f.name} (${f.code})</h3>
+                <div style="margin-bottom:6px;">Tensão: <strong>${f.voltage} kV</strong></div>
+                <div style="margin-bottom:6px;">Corrente: <strong>${f.current} A</strong></div>
+                <div style="margin-bottom:6px;">Potência: <strong>${f.power} MW</strong></div>
+                <div style="margin-bottom:12px;">Estado: <strong style="color:${f.status === 'closed' ? '#4ade80' : '#ef4444'}">${f.status === 'closed' ? 'FECHADO' : 'ABERTO'}</strong></div>
+                <button id="modalClose" style="background:#2c2c2c; width:100%; margin-top:8px; padding:8px; border:none; border-radius:6px; cursor:pointer;">FECHAR</button>
+                <button id="modalToggle" style="background:#3b82f6; width:100%; margin-top:8px; padding:8px; border:none; border-radius:6px; cursor:pointer;">${f.status === 'closed' ? 'ABRIR' : 'FECHAR'}</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('modalClose').onclick = () => modal.remove();
+        document.getElementById('modalToggle').onclick = () => { toggleFeeder(f.id); modal.remove(); };
+    }
+
+    // Firebase listeners
+    function initFirebaseListeners() {
+        if (!firebaseEnabled || !database) return;
+        
+        onValue(ref(database, 'estados/disjuntor_q1'), (snap) => {
+            const val = snap.val();
+            if (typeof val === 'boolean' && val !== breakersState.q1) {
+                breakersState.q1 = val;
+                updateMainUI();
+                addEvent(`ESP32: Q1 ${val ? 'fechado' : 'aberto'}`);
+                if (!val) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q1 - Disjuntor aberto', status: 'active' });
+                else alarms = alarms.filter(a => !a.message.includes('Q1'));
+                renderAlarms();
+                updateClosedCount();
+            }
+        });
+        
+        onValue(ref(database, 'estados/disjuntor_q2'), (snap) => {
+            const val = snap.val();
+            if (typeof val === 'boolean' && val !== breakersState.q2) {
+                breakersState.q2 = val;
+                updateMainUI();
+                addEvent(`ESP32: Q2 ${val ? 'fechado' : 'aberto'}`);
+                if (!val) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q2 - Disjuntor aberto', status: 'active' });
+                else alarms = alarms.filter(a => !a.message.includes('Q2'));
+                renderAlarms();
+                updateClosedCount();
+            }
+        });
+        
+        feedersData.forEach(f => {
+            onValue(ref(database, `estados/alimentadores/${f.code}`), (snap) => {
+                const val = snap.val();
+                if (typeof val === 'boolean') {
+                    const newStatus = val ? 'closed' : 'open';
+                    if (f.status !== newStatus) {
+                        f.status = newStatus;
+                        if (newStatus === 'closed') {
+                            f.current = Math.floor(Math.random() * 200) + 50;
+                            f.power = +(f.current * 0.022).toFixed(1);
+                            alarms = alarms.filter(a => !a.message.includes(f.code));
+                        } else {
+                            f.current = 0;
+                            f.power = 0;
+                            alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: `${f.code} - Disjuntor aberto`, status: 'active' });
+                        }
+                        addEvent(`ESP32: ${f.code} ${newStatus === 'closed' ? 'fechado' : 'aberto'}`);
+                        renderFeedersSVG();
+                        renderAlarms();
+                        updateClosedCount();
+                    }
+                }
+            });
+        });
+        
+        onValue(ref(database, 'sensores'), (snap) => {
+            const data = snap.val();
+            if (data) {
+                if (data.tensao_138kv) measurements.bus138kV = data.tensao_138kv;
+                if (data.frequencia) measurements.freq = data.frequencia;
+                if (data.potencia_ativa) measurements.powerActive = data.potencia_ativa;
+                if (data.potencia_reativa) measurements.powerReactive = data.potencia_reativa;
+                if (data.fator_potencia) measurements.powerFactor = data.fator_potencia;
+                updateMeasurementsUI();
+            }
+        });
+    }
+
+    // Simulação local de dados
+    function startLocalSimulation() {
+        setInterval(() => {
+            if (firebaseEnabled) return;
+            if (breakersState.q1 && breakersState.q2) {
+                measurements.bus138kV = +(measurements.bus138kV + (Math.random() - 0.5) * 0.1).toFixed(2);
+                measurements.freq = +(measurements.freq + (Math.random() - 0.5) * 0.02).toFixed(2);
+                measurements.powerActive = +(measurements.powerActive + (Math.random() - 0.5) * 0.3).toFixed(1);
+                measurements.powerReactive = +(measurements.powerReactive + (Math.random() - 0.5) * 0.1).toFixed(1);
+                measurements.powerFactor = +(measurements.powerFactor + (Math.random() - 0.5) * 0.01).toFixed(2);
+                measurements.energyDay += Math.random() * 2;
+                updateMeasurementsUI();
+            }
+        }, 2000);
+    }
+
+    // Inicialização
+    document.getElementById('ctrlQ1').addEventListener('click', () => toggleMain('q1'));
+    document.getElementById('ctrlQ2').addEventListener('click', () => toggleMain('q2'));
+
+    renderFeedersSVG();
+    updateMainUI();
+    renderAlarms();
+    renderEvents();
+    updateMeasurementsUI();
+    updateClosedCount();
+
+    if (firebaseEnabled && database) {
+        initFirebaseListeners();
+        addEvent('Firebase conectado. Aguardando ESP32.');
+        document.getElementById('firebaseStatus').innerHTML = '🔥 Firebase OK';
+        document.getElementById('firebaseStatus').style.color = '#4ade80';
+    } else {
+        startLocalSimulation();
+        addEvent('Modo simulação local ativo (Firebase offline)');
+        document.getElementById('firebaseStatus').innerHTML = '⚠️ Simulação local';
+        document.getElementById('firebaseStatus').style.color = '#ef4444';
+    }
+</script>
+</body>
+</html>
