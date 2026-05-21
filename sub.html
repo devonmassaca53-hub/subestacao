@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>SCADA Industrial | Subestação com Firebase + ESP32</title>
+    <title>SCADA Industrial | Subestação Norte</title>
     <style>
         * {
             margin: 0;
@@ -121,6 +121,11 @@
             font-size: 0.8rem;
             color: #b0b0b0;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: #1a1a1a;
         }
 
         .nav-item.active {
@@ -265,6 +270,11 @@
             border-radius: 8px;
             margin-bottom: 10px;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .breaker-control:hover {
+            background: #1a1a1a;
         }
 
         .breaker-status {
@@ -286,10 +296,10 @@
             .right-panel { width: 100%; position: absolute; right: 0; top: 60px; background: rgba(10,10,10,0.95); backdrop-filter: blur(8px); height: auto; max-height: 60%; overflow-y: auto; border-left: none; border-top: 1px solid #333; z-index: 10; }
         }
     </style>
-    <!-- Import Firebase SDK -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCyQhsbwVuRxG8O6VPLH4ea4jZ4UC6Zmb0",
@@ -300,37 +310,14 @@
             appId: "1:349722774775:web:179cf758e55514a09bd7f2"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-        
-        // Expor globalmente para funções não-module
         window.db = database;
         window.ref = ref;
         window.onValue = onValue;
         window.set = set;
-        window.update = update;
-        
-        console.log("Firebase conectado com sucesso!");
-        
-        // Sinalizar que Firebase está ativo
         window.firebaseReady = true;
-    </script>
-    <script type="module">
-        // Importar novamente para uso neste script
-        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        
-        // Aguardar DOM carregado
-        document.addEventListener('DOMContentLoaded', () => {
-            const statusSpan = document.getElementById('firebaseStatus');
-            if (window.firebaseReady) {
-                statusSpan.innerHTML = '🔥 Firebase OK';
-                statusSpan.style.color = '#4ade80';
-            } else {
-                statusSpan.innerHTML = '⚠️ Firebase offline';
-                statusSpan.style.color = '#ef4444';
-            }
-        });
+        console.log("Firebase conectado");
     </script>
 </head>
 <body>
@@ -441,7 +428,7 @@
                             <circle cx="32" cy="80" r="6" fill="none" stroke="#3b82f6" stroke-width="1"/>
                             <text x="60" y="83" fill="#9ca3af" font-size="9">Clique para detalhes</text>
                             <rect x="20" y="93" width="24" height="8" fill="#3b82f6" opacity="0.5"/>
-                            <text x="60" y="99" fill="#3b82f6" font-size="9">Controle ESP32</text>
+                            <text x="60" y="99" fill="#9ca3af" font-size="9">Controle ESP32</text>
                         </g>
                     </svg>
                 </div>
@@ -491,26 +478,15 @@
 </div>
 
 <script type="module">
-    // ==================== IMPORTAÇÕES FIREBASE ====================
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCyQhsbwVuRxG8O6VPLH4ea4jZ4UC6Zmb0",
-        authDomain: "substacao.firebaseapp.com",
-        projectId: "substacao",
-        storageBucket: "substacao.firebasestorage.app",
-        messagingSenderId: "349722774775",
-        appId: "1:349722774775:web:179cf758e55514a09bd7f2"
-    };
+    const database = window.db;
+    let firebaseEnabled = !!window.firebaseReady;
 
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
-    let firebaseEnabled = true;
-
-    // ==================== ESTADOS DO SISTEMA ====================
+    // Estados dos disjuntores principais
     let breakersState = { q1: true, q2: true };
     
+    // Dados dos alimentadores
     const feedersData = [
         { id: 'F01', name: 'Alimentador Sul', code: '52T1', voltage: 13.8, current: 187, power: 4.2, status: 'closed' },
         { id: 'F02', name: 'Alimentador Norte', code: '52T2', voltage: 13.8, current: 156, power: 3.5, status: 'closed' },
@@ -520,12 +496,15 @@
         { id: 'F06', name: 'Alimentador Reserva', code: '52R6', voltage: 13.8, current: 0, power: 0, status: 'open' }
     ];
 
+    // Alarmes e eventos
     let alarms = [
-        { id: 1, time: '10:23:45', message: '52L4 - Disjuntor aberto', status: 'active' }
+        { id: 1, time: new Date().toLocaleTimeString('pt-BR'), message: '52L4 - Disjuntor aberto', status: 'active' }
     ];
     let events = [
-        { id: 1, time: new Date().toLocaleTimeString('pt-BR'), desc: 'Sistema SCADA inicializado com Firebase' }
+        { id: 1, time: new Date().toLocaleTimeString('pt-BR'), desc: 'Sistema SCADA inicializado' }
     ];
+    
+    // Medições simuladas
     let measurements = {
         bus138kV: 138.24,
         freq: 59.98,
@@ -535,7 +514,7 @@
         energyDay: 25410
     };
 
-    // ==================== FUNÇÕES DE UI E SVG ====================
+    // Relógio
     function updateClock() {
         const now = new Date();
         document.getElementById('liveClock').innerText = now.toLocaleTimeString('pt-BR');
@@ -544,24 +523,25 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    // Renderizar alimentadores no SVG
     function renderFeedersSVG() {
         const container = document.getElementById('feedersContainer');
         if (!container) return;
-        let svgContent = '';
+        let svg = '';
         const startX = 200, step = 130;
-        feedersData.forEach((feeder, idx) => {
-            const xPos = startX + idx * step;
-            const isClosed = feeder.status === 'closed';
+        feedersData.forEach((f, i) => {
+            const x = startX + i * step;
+            const isClosed = f.status === 'closed';
             const color = isClosed ? '#4ade80' : '#ef4444';
             const fillColor = isClosed ? '#166534' : '#7f1d1d';
-            svgContent += `
-                <g transform="translate(${xPos}, 0)">
+            svg += `
+                <g transform="translate(${x}, 0)">
                     <line x1="0" y1="380" x2="0" y2="420" stroke="#6b7280" stroke-width="2" />
                     <rect x="-10" y="425" width="20" height="10" fill="none" stroke="#9ca3af" stroke-width="1.5" />
                     <line x1="-6" y1="430" x2="6" y2="430" stroke="#9ca3af" stroke-width="2" />
-                    <g class="breaker-${feeder.id}" style="cursor:pointer;">
+                    <g class="breaker-${f.id}" style="cursor:pointer;">
                         <rect x="-14" y="450" width="28" height="16" rx="2" fill="${fillColor}" stroke="${color}" stroke-width="1.5" />
-                        <text x="0" y="462" fill="#e5e5e5" text-anchor="middle" font-size="8">${feeder.code}</text>
+                        <text x="0" y="462" fill="#e5e5e5" text-anchor="middle" font-size="8">${f.code}</text>
                     </g>
                     <line x1="0" y1="466" x2="0" y2="488" stroke="#9ca3af" stroke-width="2" />
                     <line x1="-6" y1="488" x2="6" y2="488" stroke="#9ca3af" stroke-width="2" />
@@ -569,55 +549,71 @@
                     <line x1="0" y1="496" x2="0" y2="500" stroke="#9ca3af" stroke-width="2" />
                     <circle cx="0" cy="515" r="8" fill="none" stroke="#6b7280" stroke-width="1.5" />
                     <text x="0" y="518" fill="#9ca3af" text-anchor="middle" font-size="6">I</text>
-                    <text x="0" y="540" fill="#e5e5e5" text-anchor="middle" font-size="10" font-weight="bold">${feeder.name}</text>
-                    <text x="0" y="554" fill="#facc15" text-anchor="middle" font-size="9">${feeder.voltage} kV</text>
-                    <text x="0" y="568" fill="#4ade80" text-anchor="middle" font-size="9">${feeder.current} A</text>
-                    <text x="0" y="582" fill="#60a5fa" text-anchor="middle" font-size="9">${feeder.power} MW</text>
+                    <text x="0" y="540" fill="#e5e5e5" text-anchor="middle" font-size="10" font-weight="bold">${f.name}</text>
+                    <text x="0" y="554" fill="#facc15" text-anchor="middle" font-size="9">${f.voltage} kV</text>
+                    <text x="0" y="568" fill="#4ade80" text-anchor="middle" font-size="9">${f.current} A</text>
+                    <text x="0" y="582" fill="#60a5fa" text-anchor="middle" font-size="9">${f.power} MW</text>
                     <rect x="-22" y="595" width="44" height="16" rx="2" fill="${fillColor}" stroke="${color}" stroke-width="1" />
                     <text x="0" y="606" fill="#e5e5e5" text-anchor="middle" font-size="8">${isClosed ? 'FECHADO' : 'ABERTO'}</text>
-                    <circle cx="0" cy="625" r="10" fill="none" stroke="#3b82f6" stroke-width="1" class="info-${feeder.id}" style="cursor:pointer;" />
-                    <text x="0" y="628" fill="#3b82f6" text-anchor="middle" font-size="7" class="info-${feeder.id}">i</text>
+                    <circle cx="0" cy="625" r="10" fill="none" stroke="#3b82f6" stroke-width="1" class="info-${f.id}" style="cursor:pointer;" />
+                    <text x="0" y="628" fill="#3b82f6" text-anchor="middle" font-size="7" class="info-${f.id}">i</text>
                 </g>
             `;
         });
-        container.innerHTML = svgContent;
-        feedersData.forEach(feeder => {
-            const breakerElem = document.querySelector(`.breaker-${feeder.id}`);
-            if (breakerElem) breakerElem.addEventListener('click', (e) => { e.stopPropagation(); toggleFeederBreaker(feeder.id); });
-            const infoElem = document.querySelector(`.info-${feeder.id}`);
-            if (infoElem) infoElem.addEventListener('click', (e) => { e.stopPropagation(); showEquipmentDetails(feeder); });
+        container.innerHTML = svg;
+        
+        // Adicionar eventos de clique
+        feedersData.forEach(f => {
+            const breakerBtn = document.querySelector(`.breaker-${f.id}`);
+            if (breakerBtn) breakerBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFeeder(f.id); });
+            const infoBtn = document.querySelector(`.info-${f.id}`);
+            if (infoBtn) infoBtn.addEventListener('click', (e) => { e.stopPropagation(); showDetails(f); });
         });
     }
 
-    function updateMainBreakersUI() {
-        const rectQ1 = document.getElementById('breakerQ1Rect');
-        const rectQ2 = document.getElementById('breakerQ2Rect');
-        if (rectQ1) { rectQ1.setAttribute('fill', breakersState.q1 ? '#166534' : '#7f1d1d'); rectQ1.setAttribute('stroke', breakersState.q1 ? '#4ade80' : '#ef4444'); }
-        if (rectQ2) { rectQ2.setAttribute('fill', breakersState.q2 ? '#166534' : '#7f1d1d'); rectQ2.setAttribute('stroke', breakersState.q2 ? '#4ade80' : '#ef4444'); }
+    // Atualizar UI dos disjuntores principais
+    function updateMainUI() {
+        const q1Rect = document.getElementById('breakerQ1Rect');
+        const q2Rect = document.getElementById('breakerQ2Rect');
+        if (q1Rect) { 
+            q1Rect.setAttribute('fill', breakersState.q1 ? '#166534' : '#7f1d1d'); 
+            q1Rect.setAttribute('stroke', breakersState.q1 ? '#4ade80' : '#ef4444'); 
+        }
+        if (q2Rect) { 
+            q2Rect.setAttribute('fill', breakersState.q2 ? '#166534' : '#7f1d1d'); 
+            q2Rect.setAttribute('stroke', breakersState.q2 ? '#4ade80' : '#ef4444'); 
+        }
         const statusQ1 = document.getElementById('statusQ1');
         const statusQ2 = document.getElementById('statusQ2');
         if (statusQ1) statusQ1.style.background = breakersState.q1 ? '#4ade80' : '#ef4444';
         if (statusQ2) statusQ2.style.background = breakersState.q2 ? '#4ade80' : '#ef4444';
     }
 
+    // Adicionar evento ao log
     function addEvent(desc) {
         events.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), desc });
         if (events.length > 20) events.pop();
         renderEvents();
     }
 
+    // Renderizar alarmes
     function renderAlarms() {
         const container = document.getElementById('alarmList');
         const active = alarms.filter(a => a.status === 'active');
-        if (active.length === 0) { container.innerHTML = '<div style="color:#6b7280; padding: 8px;">Nenhum alarme ativo</div>'; return; }
+        if (!active.length) { 
+            container.innerHTML = '<div style="color:#6b7280; padding:8px;">Nenhum alarme ativo</div>'; 
+            return; 
+        }
         container.innerHTML = active.map(a => `<div class="alarm-item"><div>${a.time} - ${a.message}</div><span style="color:#ef4444;">ATIVO</span></div>`).join('');
     }
 
+    // Renderizar eventos
     function renderEvents() {
         const container = document.getElementById('eventList');
         container.innerHTML = events.slice(0, 8).map(e => `<div class="event-item"><div class="event-time">${e.time}</div><div>${e.desc}</div></div>`).join('');
     }
 
+    // Atualizar medições na tela
     function updateMeasurementsUI() {
         const grid = document.getElementById('measurementsPanel');
         grid.innerHTML = `
@@ -631,106 +627,155 @@
         `;
     }
 
+    // Contar disjuntores fechados
     function updateClosedCount() {
-        const closedFeeders = feedersData.filter(f => f.status === 'closed').length;
-        const mainClosed = (breakersState.q1 ? 1 : 0) + (breakersState.q2 ? 1 : 0);
-        document.getElementById('closedBreakersCount').innerText = `${mainClosed + closedFeeders} / ${feedersData.length + 2}`;
+        const closed = feedersData.filter(f => f.status === 'closed').length + (breakersState.q1 ? 1 : 0) + (breakersState.q2 ? 1 : 0);
+        document.getElementById('closedBreakersCount').innerText = `${closed} / ${feedersData.length + 2}`;
     }
 
-    // ==================== COMANDOS VIA FIREBASE ====================
+    // Enviar comando via Firebase
     async function sendCommand(path, value) {
-        if (firebaseEnabled) {
+        if (firebaseEnabled && database) {
             try {
                 await set(ref(database, `comandos/${path}`), { value, timestamp: Date.now() });
                 addEvent(`Comando enviado: ${path} = ${value}`);
-            } catch (err) { console.error(err); addEvent(`Falha ao enviar comando: ${path}`); }
+            } catch(e) { 
+                console.error(e); 
+                addEvent(`Falha ao enviar comando ${path}`);
+                // Fallback local se falhar
+                executeLocalCommand(path, value);
+            }
         } else {
             addEvent(`[SIMULAÇÃO] Comando: ${path} = ${value}`);
+            executeLocalCommand(path, value);
         }
     }
 
-    async function toggleMainBreaker(breakerId) {
-        const newState = !breakersState[breakerId];
-        const path = breakerId === 'q1' ? 'disjuntor_q1' : 'disjuntor_q2';
-        await sendCommand(path, newState);
-        // Atualização local será feita via listener do Firebase
+    // Execução local de comandos (fallback)
+    function executeLocalCommand(path, value) {
+        if (path === 'disjuntor_q1') {
+            breakersState.q1 = value;
+            updateMainUI();
+            addEvent(`Local: Q1 ${value ? 'fechado' : 'aberto'}`);
+            if (!value) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q1 - Disjuntor aberto', status: 'active' });
+            else alarms = alarms.filter(a => !a.message.includes('Q1'));
+            renderAlarms();
+            updateClosedCount();
+        } else if (path === 'disjuntor_q2') {
+            breakersState.q2 = value;
+            updateMainUI();
+            addEvent(`Local: Q2 ${value ? 'fechado' : 'aberto'}`);
+            if (!value) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q2 - Disjuntor aberto', status: 'active' });
+            else alarms = alarms.filter(a => !a.message.includes('Q2'));
+            renderAlarms();
+            updateClosedCount();
+        } else if (path.startsWith('alimentadores/')) {
+            const code = path.split('/')[1];
+            const feeder = feedersData.find(f => f.code === code);
+            if (feeder) {
+                feeder.status = value ? 'closed' : 'open';
+                if (value) {
+                    feeder.current = Math.floor(Math.random() * 200) + 50;
+                    feeder.power = +(feeder.current * 0.022).toFixed(1);
+                    alarms = alarms.filter(a => !a.message.includes(feeder.code));
+                } else {
+                    feeder.current = 0;
+                    feeder.power = 0;
+                    alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: `${feeder.code} - Disjuntor aberto`, status: 'active' });
+                }
+                addEvent(`Local: ${feeder.code} ${value ? 'fechado' : 'aberto'}`);
+                renderFeedersSVG();
+                renderAlarms();
+                updateClosedCount();
+            }
+        }
     }
 
-    async function toggleFeederBreaker(feederId) {
+    // Alternar disjuntor principal
+    async function toggleMain(breaker) {
+        const newState = !breakersState[breaker];
+        await sendCommand(breaker === 'q1' ? 'disjuntor_q1' : 'disjuntor_q2', newState);
+    }
+
+    // Alternar alimentador
+    async function toggleFeeder(id) {
         if (!breakersState.q1 || !breakersState.q2) {
-            addEvent(`Falha: Barramento desenergizado, não é possível operar ${feederId}`);
+            addEvent(`Falha: Barramento desenergizado, não é possível operar ${id}`);
             return;
         }
-        const feeder = feedersData.find(f => f.id === feederId);
+        const feeder = feedersData.find(f => f.id === id);
         if (!feeder) return;
-        const newState = feeder.status === 'closed' ? false : true;
+        const newState = feeder.status !== 'closed';
         await sendCommand(`alimentadores/${feeder.code}`, newState);
-        // Atualização via Firebase listener
     }
 
-    // ==================== LISTENERS FIREBASE ====================
+    // Mostrar detalhes do equipamento
+    function showDetails(f) {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000;';
+        modal.innerHTML = `
+            <div style="background:#1e1e1e; border:1px solid #3b82f6; border-radius:12px; width:340px; padding:20px;">
+                <h3 style="color:#facc15; margin-bottom:12px;">${f.name} (${f.code})</h3>
+                <div style="margin-bottom:6px;">Tensão: <strong>${f.voltage} kV</strong></div>
+                <div style="margin-bottom:6px;">Corrente: <strong>${f.current} A</strong></div>
+                <div style="margin-bottom:6px;">Potência: <strong>${f.power} MW</strong></div>
+                <div style="margin-bottom:12px;">Estado: <strong style="color:${f.status === 'closed' ? '#4ade80' : '#ef4444'}">${f.status === 'closed' ? 'FECHADO' : 'ABERTO'}</strong></div>
+                <button id="modalClose" style="background:#2c2c2c; width:100%; margin-top:8px; padding:8px; border:none; border-radius:6px; cursor:pointer;">FECHAR</button>
+                <button id="modalToggle" style="background:#3b82f6; width:100%; margin-top:8px; padding:8px; border:none; border-radius:6px; cursor:pointer;">${f.status === 'closed' ? 'ABRIR' : 'FECHAR'}</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('modalClose').onclick = () => modal.remove();
+        document.getElementById('modalToggle').onclick = () => { toggleFeeder(f.id); modal.remove(); };
+    }
+
+    // Firebase listeners
     function initFirebaseListeners() {
-        // Listener para disjuntor Q1
-        onValue(ref(database, 'estados/disjuntor_q1'), (snapshot) => {
-            const val = snapshot.val();
-            if (val !== null && typeof val === 'boolean') {
-                if (breakersState.q1 !== val) {
-                    breakersState.q1 = val;
-                    updateMainBreakersUI();
-                    addEvent(`ESP32: Disjuntor Q1 ${val ? 'fechado' : 'aberto'}`);
-                    if (!val) {
-                        alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q1 - Disjuntor aberto', status: 'active' });
-                        feedersData.forEach(f => { f.voltage = 0; f.current = 0; f.power = 0; });
-                        measurements.bus138kV = 0; measurements.freq = 0; measurements.powerActive = 0;
-                    } else {
-                        alarms = alarms.filter(a => !a.message.includes('Q1'));
-                        measurements.bus138kV = 138.24; measurements.freq = 59.98; measurements.powerActive = 87.3;
-                    }
-                    renderFeedersSVG();
-                    renderAlarms();
-                    updateMeasurementsUI();
-                    updateClosedCount();
-                }
+        if (!firebaseEnabled || !database) return;
+        
+        onValue(ref(database, 'estados/disjuntor_q1'), (snap) => {
+            const val = snap.val();
+            if (typeof val === 'boolean' && val !== breakersState.q1) {
+                breakersState.q1 = val;
+                updateMainUI();
+                addEvent(`ESP32: Q1 ${val ? 'fechado' : 'aberto'}`);
+                if (!val) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q1 - Disjuntor aberto', status: 'active' });
+                else alarms = alarms.filter(a => !a.message.includes('Q1'));
+                renderAlarms();
+                updateClosedCount();
             }
         });
-        // Listener para disjuntor Q2
-        onValue(ref(database, 'estados/disjuntor_q2'), (snapshot) => {
-            const val = snapshot.val();
-            if (val !== null && typeof val === 'boolean') {
-                if (breakersState.q2 !== val) {
-                    breakersState.q2 = val;
-                    updateMainBreakersUI();
-                    addEvent(`ESP32: Disjuntor Q2 ${val ? 'fechado' : 'aberto'}`);
-                    if (!val) {
-                        alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q2 - Disjuntor aberto', status: 'active' });
-                        feedersData.forEach(f => { f.current = 0; f.power = 0; });
-                    } else {
-                        alarms = alarms.filter(a => !a.message.includes('Q2'));
-                    }
-                    renderFeedersSVG();
-                    renderAlarms();
-                    updateMeasurementsUI();
-                    updateClosedCount();
-                }
+        
+        onValue(ref(database, 'estados/disjuntor_q2'), (snap) => {
+            const val = snap.val();
+            if (typeof val === 'boolean' && val !== breakersState.q2) {
+                breakersState.q2 = val;
+                updateMainUI();
+                addEvent(`ESP32: Q2 ${val ? 'fechado' : 'aberto'}`);
+                if (!val) alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: 'Q2 - Disjuntor aberto', status: 'active' });
+                else alarms = alarms.filter(a => !a.message.includes('Q2'));
+                renderAlarms();
+                updateClosedCount();
             }
         });
-        // Listener para alimentadores
-        feedersData.forEach(feeder => {
-            onValue(ref(database, `estados/alimentadores/${feeder.code}`), (snapshot) => {
-                const val = snapshot.val();
-                if (val !== null && typeof val === 'boolean') {
+        
+        feedersData.forEach(f => {
+            onValue(ref(database, `estados/alimentadores/${f.code}`), (snap) => {
+                const val = snap.val();
+                if (typeof val === 'boolean') {
                     const newStatus = val ? 'closed' : 'open';
-                    if (feeder.status !== newStatus) {
-                        feeder.status = newStatus;
+                    if (f.status !== newStatus) {
+                        f.status = newStatus;
                         if (newStatus === 'closed') {
-                            feeder.current = Math.floor(Math.random() * 200) + 50;
-                            feeder.power = +(feeder.current * 0.022).toFixed(1);
-                            alarms = alarms.filter(a => !a.message.includes(feeder.code));
+                            f.current = Math.floor(Math.random() * 200) + 50;
+                            f.power = +(f.current * 0.022).toFixed(1);
+                            alarms = alarms.filter(a => !a.message.includes(f.code));
                         } else {
-                            feeder.current = 0; feeder.power = 0;
-                            alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: `${feeder.code} - Disjuntor aberto`, status: 'active' });
+                            f.current = 0;
+                            f.power = 0;
+                            alarms.unshift({ id: Date.now(), time: new Date().toLocaleTimeString('pt-BR'), message: `${f.code} - Disjuntor aberto`, status: 'active' });
                         }
-                        addEvent(`ESP32: ${feeder.code} ${newStatus === 'closed' ? 'fechado' : 'aberto'}`);
+                        addEvent(`ESP32: ${f.code} ${newStatus === 'closed' ? 'fechado' : 'aberto'}`);
                         renderFeedersSVG();
                         renderAlarms();
                         updateClosedCount();
@@ -738,9 +783,9 @@
                 }
             });
         });
-        // Listener para sensores (tensão, corrente, frequência)
-        onValue(ref(database, 'sensores'), (snapshot) => {
-            const data = snapshot.val();
+        
+        onValue(ref(database, 'sensores'), (snap) => {
+            const data = snap.val();
             if (data) {
                 if (data.tensao_138kv) measurements.bus138kV = data.tensao_138kv;
                 if (data.frequencia) measurements.freq = data.frequencia;
@@ -752,7 +797,7 @@
         });
     }
 
-    // ==================== SIMULAÇÃO LOCAL (fallback) ====================
+    // Simulação local de dados
     function startLocalSimulation() {
         setInterval(() => {
             if (firebaseEnabled) return;
@@ -768,44 +813,25 @@
         }, 2000);
     }
 
-    // ==================== INICIALIZAÇÃO ====================
-    function showEquipmentDetails(feeder) {
-        const modal = document.createElement('div');
-        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:1000;';
-        modal.innerHTML = `
-            <div style="background:#1e1e1e; border:1px solid #3b82f6; border-radius:12px; width:340px; padding:20px;">
-                <h3 style="color:#facc15; margin-bottom:12px;">${feeder.name} (${feeder.code})</h3>
-                <div>Tensão: <strong>${feeder.voltage} kV</strong></div>
-                <div>Corrente: <strong>${feeder.current} A</strong></div>
-                <div>Potência: <strong>${feeder.power} MW</strong></div>
-                <div>Estado: <strong style="color:${feeder.status === 'closed' ? '#4ade80' : '#ef4444'}">${feeder.status === 'closed' ? 'FECHADO' : 'ABERTO'}</strong></div>
-                <button id="modalCloseBtn" style="background:#2c2c2c; border:none; padding:8px; width:100%; margin-top:12px; border-radius:6px; cursor:pointer;">FECHAR</button>
-                <button id="modalToggleBtn" style="background:#3b82f6; border:none; padding:8px; width:100%; margin-top:8px; border-radius:6px; cursor:pointer;">${feeder.status === 'closed' ? 'ABRIR' : 'FECHAR'}</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById('modalCloseBtn').onclick = () => modal.remove();
-        document.getElementById('modalToggleBtn').onclick = () => { toggleFeederBreaker(feeder.id); modal.remove(); };
-    }
+    // Inicialização
+    document.getElementById('ctrlQ1').addEventListener('click', () => toggleMain('q1'));
+    document.getElementById('ctrlQ2').addEventListener('click', () => toggleMain('q2'));
 
-    document.getElementById('ctrlQ1').addEventListener('click', () => toggleMainBreaker('q1'));
-    document.getElementById('ctrlQ2').addEventListener('click', () => toggleMainBreaker('q2'));
-    
     renderFeedersSVG();
-    updateMainBreakersUI();
+    updateMainUI();
     renderAlarms();
     renderEvents();
     updateMeasurementsUI();
     updateClosedCount();
-    
-    if (firebaseEnabled) {
+
+    if (firebaseEnabled && database) {
         initFirebaseListeners();
-        addEvent('Firebase conectado. Aguardando dados do ESP32...');
+        addEvent('Firebase conectado. Aguardando ESP32.');
         document.getElementById('firebaseStatus').innerHTML = '🔥 Firebase OK';
         document.getElementById('firebaseStatus').style.color = '#4ade80';
     } else {
         startLocalSimulation();
-        addEvent('Modo simulação local ativo (Firebase não disponível)');
+        addEvent('Modo simulação local ativo (Firebase offline)');
         document.getElementById('firebaseStatus').innerHTML = '⚠️ Simulação local';
         document.getElementById('firebaseStatus').style.color = '#ef4444';
     }
