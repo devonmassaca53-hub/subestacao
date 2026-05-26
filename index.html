@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>SCADA | Subestação com Seccionador (Servo)</title>
+    <title>SCADA | Subestação com Seccionador</title>
     <style>
         * {
             margin: 0;
@@ -46,12 +46,28 @@
         .title { font-weight: 700; font-size: 1.2rem; }
         .subtitle { font-size: 0.7rem; color: #9ca3af; }
 
-        .firebase-status {
+        .status-indicators {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .esp-status, .firebase-status {
             background: #111;
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
+        .esp-led {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+        }
+        .esp-led.online { background: #4ade80; }
 
         .datetime {
             font-family: monospace;
@@ -68,180 +84,191 @@
         }
 
         .sidebar {
-            width: 240px;
+            width: 260px;
             background: #0a0a0a;
             border-right: 1px solid #1f1f1f;
             overflow-y: auto;
         }
-
         .sidebar nav {
             display: flex;
             flex-direction: column;
-            padding: 12px;
-            gap: 4px;
+            padding: 16px 12px;
+            gap: 6px;
         }
-
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
             color: #b0b0b0;
             cursor: pointer;
+            transition: all 0.2s;
         }
-
+        .nav-item i { width: 22px; }
+        .nav-item:hover { background: #1a1a1a; }
         .nav-item.active {
-            background: #1f1f1f;
+            background: #1f2a3a;
             color: #4ade80;
             border-left: 3px solid #4ade80;
         }
 
-        .diagram-container {
+        .content-area {
             flex: 1;
-            background: #0c0c0c;
             overflow: auto;
             padding: 16px;
+        }
+        .content-pane {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+        .content-pane.active-pane { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .diagram-card {
             background: #0f0f0f;
             border: 1px solid #222;
-            border-radius: 8px;
-            min-height: 100%;
+            border-radius: 12px;
+            overflow: hidden;
         }
-
         .diagram-title {
-            padding: 10px 16px;
+            padding: 12px 20px;
             border-bottom: 1px solid #222;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: bold;
+            background: #0a0a0a;
         }
-
         .diagram-svg {
-            padding: 16px;
+            padding: 20px;
             overflow-x: auto;
-            min-height: 600px;
+            min-height: 550px;
         }
-
         svg {
             display: block;
             width: 100%;
             height: auto;
             min-width: 1100px;
             background: #0a0a0a;
-            border-radius: 6px;
-        }
-
-        .right-panel {
-            width: 340px;
-            background: #0a0a0a;
-            border-left: 1px solid #1f1f1f;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        .panel-section {
-            padding: 14px;
-            border-bottom: 1px solid #1a1a1a;
-        }
-
-        .section-title {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #9ca3af;
+            border-radius: 8px;
         }
 
         .measure-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }
-
         .measure-card {
             background: #111;
-            padding: 8px;
-            border-radius: 6px;
+            padding: 15px;
+            border-radius: 12px;
             text-align: center;
+            border: 1px solid #222;
         }
+        .measure-value { font-size: 1.6rem; font-weight: bold; font-family: monospace; color: #facc15; }
 
-        .measure-label { font-size: 0.6rem; color: #9ca3af; }
-        .measure-value { font-size: 1.3rem; font-weight: bold; font-family: monospace; color: #facc15; }
-
-        .breaker-control {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
             background: #111;
-            padding: 12px 16px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #222;
+        }
+        .data-table th { background: #1a1a1a; color: #4ade80; }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .btn {
+            background: #1f2a3a;
+            border: none;
+            padding: 10px 20px;
             border-radius: 8px;
-            margin-bottom: 10px;
+            color: white;
             cursor: pointer;
             transition: all 0.2s;
         }
-
-        .breaker-control:hover { background: #1a1a1a; }
-
-        .breaker-status {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-        }
-
-        .servo-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 2px;
-            margin-left: 8px;
-        }
-
-        .btn {
-            background: #1f3a66;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            width: 100%;
-            cursor: pointer;
-            margin-top: 10px;
-            font-weight: bold;
-        }
+        .btn:hover { background: #2a3a4a; transform: scale(1.02); }
+        .btn-danger { background: #7f1d1d; }
+        .btn-warning { background: #b45309; }
+        .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+        .btn-block { width: 100%; margin-top: 10px; }
 
         .event-list, .alarm-list {
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .event-item, .alarm-item {
             background: #111;
-            padding: 6px 8px;
-            font-size: 0.65rem;
-            border-left: 2px solid;
-            margin-bottom: 4px;
+            border-radius: 12px;
+            overflow: hidden;
         }
+        .event-item, .alarm-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .event-time { color: #888; font-family: monospace; font-size: 0.75rem; }
+        .alarm-active { color: #ef4444; font-weight: bold; }
+
+        /* Modal de Confirmação */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #1a1a1a;
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid #4ade80;
+        }
+        .modal-content h3 { color: #facc15; margin-bottom: 15px; }
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .modal-buttons button { flex: 1; padding: 10px; border-radius: 8px; cursor: pointer; }
+        .btn-confirm { background: #166534; color: white; border: none; }
+        .btn-cancel { background: #7f1d1d; color: white; border: none; }
 
         .footer {
             background: #070707;
             border-top: 1px solid #1a1a1a;
-            padding: 4px 16px;
-            font-size: 0.65rem;
+            padding: 8px 20px;
+            font-size: 0.7rem;
             display: flex;
             justify-content: space-between;
+            color: #6b7280;
         }
-
-        ::-webkit-scrollbar { width: 5px; }
+        .status-led { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #111; }
         ::-webkit-scrollbar-thumb { background: #2c2c2c; }
+        @media (max-width: 768px) { .sidebar { width: 200px; } }
     </style>
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -257,13 +284,11 @@
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-        
         window.db = database;
         window.ref = ref;
         window.onValue = onValue;
         window.set = set;
-        
-        console.log("Firebase conectado!");
+        window.firebaseReady = true;
     </script>
 </head>
 <body>
@@ -274,292 +299,417 @@
                 <div class="title">SUBESTAÇÃO FEIRA DE CIÊNCIAS</div>
                 <div class="subtitle">220V / 9,7V | Servo Seccionador</div>
             </div>
-            <div class="datetime">
-                <span id="liveClock">--:--:--</span>
+            <div class="status-indicators">
+                <div class="esp-status"><div class="esp-led" id="espLed"></div><span id="espStatusText">ESP32 offline</span></div>
+                <div class="firebase-status"><i class="fas fa-fire"></i> Firebase OK</div>
+                <div class="datetime"><i class="far fa-clock"></i> <span id="liveClock">--:--:--</span></div>
             </div>
-            <div class="firebase-status" id="firebaseStatus">🔄 Conectando...</div>
         </div>
 
         <div class="main-layout">
             <div class="sidebar">
                 <nav>
-                    <div class="nav-item active">📊 Visão Geral</div>
-                    <div class="nav-item">⚡ Diagrama Unifilar</div>
-                    <div class="nav-item">🔔 Alarmes</div>
-                    <div class="nav-item">📋 Eventos</div>
-                    <div class="nav-item">🔧 Manobras</div>
-                    <div class="nav-item">📡 Medições</div>
-                    <div class="nav-item">⚙️ Configurações</div>
+                    <div class="nav-item active" data-pane="unifilar"><i class="fas fa-project-diagram"></i> Diagrama Unifilar</div>
+                    <div class="nav-item" data-pane="medicoes"><i class="fas fa-chart-line"></i> Medições</div>
+                    <div class="nav-item" data-pane="alarmes"><i class="fas fa-bell"></i> Alarmes</div>
+                    <div class="nav-item" data-pane="eventos"><i class="fas fa-history"></i> Eventos</div>
+                    <div class="nav-item" data-pane="controle"><i class="fas fa-sliders-h"></i> Controle Manual</div>
+                    <div class="nav-item" data-pane="sobre"><i class="fas fa-info-circle"></i> Sobre</div>
                 </nav>
             </div>
 
-            <div class="diagram-container">
-                <div class="diagram-card">
-                    <div class="diagram-title">DIAGRAMA UNIFILAR - 220V → Q1 → TRANSFORMADOR → SECCIONADOR (SERVO) → Q2 → CARGAS</div>
-                    <div class="diagram-svg">
-                        <svg viewBox="0 0 1100 650">
-                            <defs>
-                                <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-                                    <polygon points="0 0, 8 4, 0 8" fill="#facc15" />
-                                </marker>
-                            </defs>
-                            <g stroke="#1a1a1a" stroke-width="0.5">
-                                <line x1="0" y1="50" x2="1100" y2="50"/>
-                                <line x1="0" y1="100" x2="1100" y2="100"/>
-                                <line x1="0" y1="150" x2="1100" y2="150"/>
-                                <line x1="0" y1="200" x2="1100" y2="200"/>
-                                <line x1="0" y1="250" x2="1100" y2="250"/>
-                                <line x1="0" y1="300" x2="1100" y2="300"/>
-                                <line x1="0" y1="350" x2="1100" y2="350"/>
-                                <line x1="0" y1="400" x2="1100" y2="400"/>
-                                <line x1="0" y1="450" x2="1100" y2="450"/>
-                                <line x1="0" y1="500" x2="1100" y2="500"/>
-                                <line x1="200" y1="0" x2="200" y2="650"/>
-                                <line x1="400" y1="0" x2="400" y2="650"/>
-                                <line x1="600" y1="0" x2="600" y2="650"/>
-                                <line x1="800" y1="0" x2="800" y2="650"/>
-                                <line x1="1000" y1="0" x2="1000" y2="650"/>
-                            </g>
+            <div class="content-area">
+                <div class="content-pane active-pane" id="pane-unifilar">
+                    <div class="diagram-card">
+                        <div class="diagram-title"><i class="fas fa-project-diagram"></i> DIAGRAMA UNIFILAR - Clique nos equipamentos</div>
+                        <div class="diagram-svg">
+                            <svg viewBox="0 0 1100 650">
+                                <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0 0, 8 4, 0 8" fill="#facc15" /></marker></defs>
+                                <g stroke="#1a1a1a" stroke-width="0.5">
+                                    <line x1="0" y1="50" x2="1100" y2="50"/><line x1="0" y1="100" x2="1100" y2="100"/>
+                                    <line x1="0" y1="150" x2="1100" y2="150"/><line x1="0" y1="200" x2="1100" y2="200"/>
+                                    <line x1="0" y1="250" x2="1100" y2="250"/><line x1="0" y1="300" x2="1100" y2="300"/>
+                                    <line x1="0" y1="350" x2="1100" y2="350"/><line x1="0" y1="400" x2="1100" y2="400"/>
+                                    <line x1="0" y1="450" x2="1100" y2="450"/><line x1="0" y1="500" x2="1100" y2="500"/>
+                                    <line x1="200" y1="0" x2="200" y2="650"/><line x1="400" y1="0" x2="400" y2="650"/>
+                                    <line x1="600" y1="0" x2="600" y2="650"/><line x1="800" y1="0" x2="800" y2="650"/>
+                                    <line x1="1000" y1="0" x2="1000" y2="650"/>
+                                </g>
+                                <text x="550" y="40" fill="#facc15" text-anchor="middle" font-size="12" font-weight="bold">ALIMENTAÇÃO 220V AC</text>
+                                <line x1="550" y1="55" x2="550" y2="85" stroke="#facc15" stroke-width="3"/>
+                                <polygon points="545,80 555,80 550,90" fill="#facc15"/>
 
-                            <text x="550" y="40" fill="#facc15" text-anchor="middle" font-size="12" font-weight="bold">ALIMENTAÇÃO 220V AC</text>
-                            <line x1="550" y1="55" x2="550" y2="85" stroke="#facc15" stroke-width="3"/>
-                            <polygon points="545,80 555,80 550,90" fill="#facc15"/>
+                                <g class="equipamento" data-equip="q1" style="cursor:pointer;">
+                                    <rect x="532" y="105" width="36" height="24" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ1Rect"/>
+                                    <text x="550" y="120" fill="#e5e5e5" text-anchor="middle" font-size="9" font-weight="bold">Q1</text>
+                                    <text x="550" y="138" fill="#9ca3af" text-anchor="middle" font-size="7">Disjuntor Geral</text>
+                                </g>
+                                <line x1="550" y1="129" x2="550" y2="160" stroke="#4ade80" stroke-width="3"/>
 
-                            <!-- Q1 -->
-                            <g id="breakerQ1Group" transform="translate(550, 115)">
-                                <rect x="-18" y="-12" width="36" height="24" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ1Rect"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="9" font-weight="bold">Q1</text>
-                                <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">Relé Entrada</text>
-                            </g>
+                                <g transform="translate(550, 195)">
+                                    <circle cx="-20" cy="0" r="16" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+                                    <circle cx="20" cy="0" r="16" fill="none" stroke="#4ade80" stroke-width="2.5"/>
+                                    <line x1="-30" y1="0" x2="30" y2="0" stroke="#4ade80" stroke-width="2"/>
+                                    <text x="0" y="28" fill="#e5e5e5" text-anchor="middle" font-size="10">TR-01</text>
+                                    <text x="0" y="40" fill="#9ca3af" text-anchor="middle" font-size="8">220V / 9,7V</text>
+                                </g>
+                                <line x1="550" y1="211" x2="550" y2="240" stroke="#4ade80" stroke-width="3"/>
 
-                            <!-- Transformador -->
-                            <g transform="translate(550, 185)">
-                                <circle cx="-20" cy="0" r="16" fill="none" stroke="#4ade80" stroke-width="2.5"/>
-                                <circle cx="20" cy="0" r="16" fill="none" stroke="#4ade80" stroke-width="2.5"/>
-                                <line x1="-30" y1="0" x2="30" y2="0" stroke="#4ade80" stroke-width="2"/>
-                                <text x="0" y="28" fill="#e5e5e5" text-anchor="middle" font-size="10">TR-01</text>
-                                <text x="0" y="40" fill="#9ca3af" text-anchor="middle" font-size="8">220V / 9,7V</text>
-                            </g>
+                                <g class="equipamento" data-equip="servo" style="cursor:pointer;">
+                                    <rect x="530" y="245" width="40" height="28" rx="4" fill="#1a3a5a" stroke="#3b82f6" stroke-width="2" id="servoRect"/>
+                                    <text x="550" y="260" fill="#e5e5e5" text-anchor="middle" font-size="8" font-weight="bold">SECC</text>
+                                    <text x="550" y="274" fill="#9ca3af" text-anchor="middle" font-size="6">Seccionador</text>
+                                </g>
+                                <line x1="550" y1="273" x2="550" y2="300" stroke="#4ade80" stroke-width="3"/>
 
-                            <!-- SECCIONADOR (SERVO) -->
-                            <g id="servoGroup" transform="translate(550, 255)">
-                                <rect x="-20" y="-14" width="40" height="28" rx="4" fill="#1a3a5a" stroke="#3b82f6" stroke-width="2" id="servoRect"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="8" font-weight="bold">SECCIONADOR</text>
-                                <text x="0" y="18" fill="#9ca3af" text-anchor="middle" font-size="6">Servo Motor</text>
-                            </g>
+                                <g class="equipamento" data-equip="q2" style="cursor:pointer;">
+                                    <rect x="532" y="310" width="36" height="24" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ2Rect"/>
+                                    <text x="550" y="325" fill="#e5e5e5" text-anchor="middle" font-size="9" font-weight="bold">Q2</text>
+                                    <text x="550" y="343" fill="#9ca3af" text-anchor="middle" font-size="7">Disjuntor Carga</text>
+                                </g>
+                                <line x1="550" y1="334" x2="550" y2="370" stroke="#4ade80" stroke-width="4"/>
+                                <line x1="200" y1="380" x2="900" y2="380" stroke="#4ade80" stroke-width="5"/>
+                                <text x="60" y="385" fill="#4ade80" font-size="10">CIRCUITO SECUNDÁRIO 9,7V AC</text>
 
-                            <!-- Q2 -->
-                            <g id="breakerQ2Group" transform="translate(550, 320)">
-                                <rect x="-18" y="-12" width="36" height="24" rx="3" fill="#166534" stroke="#4ade80" stroke-width="2" id="breakerQ2Rect"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="9" font-weight="bold">Q2</text>
-                                <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">Relé Saída</text>
-                            </g>
+                                <g class="equipamento" data-equip="cc1" style="cursor:pointer;">
+                                    <rect x="335" y="450" width="30" height="20" rx="2" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" id="cc1Rect"/>
+                                    <text x="350" y="464" fill="#e5e5e5" text-anchor="middle" font-size="8">CC1</text>
+                                    <text x="350" y="482" fill="#9ca3af" text-anchor="middle" font-size="7">Cooler</text>
+                                </g>
+                                <g class="equipamento" data-equip="cc2" style="cursor:pointer;">
+                                    <rect x="735" y="450" width="30" height="20" rx="2" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" id="cc2Rect"/>
+                                    <text x="750" y="464" fill="#e5e5e5" text-anchor="middle" font-size="8">CC2</text>
+                                    <text x="750" y="482" fill="#9ca3af" text-anchor="middle" font-size="7">Reserva</text>
+                                </g>
+                                <line x1="350" y1="380" x2="350" y2="440" stroke="#6b7280" stroke-width="2"/>
+                                <line x1="750" y1="380" x2="750" y2="440" stroke="#6b7280" stroke-width="2"/>
 
-                            <line x1="550" y1="332" x2="550" y2="370" stroke="#4ade80" stroke-width="4"/>
-                            <line x1="200" y1="380" x2="900" y2="380" stroke="#4ade80" stroke-width="5"/>
-                            <text x="60" y="385" fill="#4ade80" font-size="10">CIRCUITO SECUNDÁRIO 9,7V AC</text>
-
-                            <!-- Carga 1 (Cooler) -->
-                            <g transform="translate(350, 460)">
-                                <rect x="-15" y="-10" width="30" height="20" rx="2" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" id="cc1Rect"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="8">CC1</text>
-                                <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">Cooler</text>
-                            </g>
-
-                            <!-- Carga 2 (Reserva) -->
-                            <g transform="translate(750, 460)">
-                                <rect x="-15" y="-10" width="30" height="20" rx="2" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" id="cc2Rect"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="8">CC2</text>
-                                <text x="0" y="22" fill="#9ca3af" text-anchor="middle" font-size="7">Reserva</text>
-                            </g>
-
-                            <line x1="350" y1="380" x2="350" y2="450" stroke="#6b7280" stroke-width="2"/>
-                            <line x1="750" y1="380" x2="750" y2="450" stroke="#6b7280" stroke-width="2"/>
-
-                            <!-- Sensor ACS712 -->
-                            <g transform="translate(550, 540)">
-                                <rect x="-25" y="-10" width="50" height="20" rx="3" fill="#1a3a5a" stroke="#3b82f6" stroke-width="1.5"/>
-                                <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="7">ACS712</text>
-                                <text x="0" y="-14" fill="#3b82f6" text-anchor="middle" font-size="7">Sensor Corrente</text>
-                            </g>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            <div class="right-panel">
-                <div class="panel-section">
-                    <div class="section-title">🎛️ CONTROLE DOS RELÉS</div>
-                    <div class="breaker-control" id="ctrlQ1">
-                        <span>🔌 Relé Q1 (Entrada 220V)</span>
-                        <div class="breaker-status" id="statusQ1" style="background:#4ade80;"></div>
-                    </div>
-                    <div class="breaker-control" id="ctrlServo">
-                        <span>🔧 Seccionador (Servo 35°/0°)</span>
-                        <div class="breaker-status" id="statusServo" style="background:#4ade80;"></div>
-                    </div>
-                    <div class="breaker-control" id="ctrlQ2">
-                        <span>⚡ Relé Q2 (Saída 9,7V)</span>
-                        <div class="breaker-status" id="statusQ2" style="background:#4ade80;"></div>
-                    </div>
-                    <div class="breaker-control" id="ctrlCC1">
-                        <span>🌀 Cooler (CC1)</span>
-                        <div class="breaker-status" id="statusCC1" style="background:#ef4444;"></div>
-                    </div>
-                    <div class="breaker-control" id="ctrlCC2">
-                        <span>🔋 Carga Reserva (CC2)</span>
-                        <div class="breaker-status" id="statusCC2" style="background:#ef4444;"></div>
+                                <g transform="translate(550, 530)">
+                                    <rect x="-25" y="-10" width="50" height="20" rx="3" fill="#1a3a5a" stroke="#3b82f6" stroke-width="1.5"/>
+                                    <text x="0" y="4" fill="#e5e5e5" text-anchor="middle" font-size="7">ACS712</text>
+                                    <text x="0" y="-14" fill="#3b82f6" text-anchor="middle" font-size="7">Sensor Corrente</text>
+                                </g>
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                <div class="panel-section">
-                    <div class="section-title">📡 MEDIÇÕES EM TEMPO REAL</div>
-                    <div class="measure-grid">
-                        <div class="measure-card"><div class="measure-label">Tensão Entrada</div><div class="measure-value" id="tensaoEntrada">220</div></div>
-                        <div class="measure-card"><div class="measure-label">Tensão Saída</div><div class="measure-value" id="tensaoSaida">9.7</div></div>
-                        <div class="measure-card"><div class="measure-label">Corrente</div><div class="measure-value" id="correnteSensor">0.00</div></div>
-                        <div class="measure-card"><div class="measure-label">Potência</div><div class="measure-value" id="potencia">0</div></div>
+                <div class="content-pane" id="pane-medicoes">
+                    <h3>Medições em Tempo Real</h3>
+                    <div class="measure-grid" id="measurementsPanel">
+                        <div class="measure-card"><div class="measure-label">Tensão Entrada</div><div class="measure-value" id="medTensaoEntrada">220</div></div>
+                        <div class="measure-card"><div class="measure-label">Tensão Saída TR</div><div class="measure-value" id="medTensaoSaida">9.7</div></div>
+                        <div class="measure-card"><div class="measure-label">Corrente</div><div class="measure-value" id="medCorrente">0.00</div></div>
+                        <div class="measure-card"><div class="measure-label">Potência</div><div class="measure-value" id="medPotencia">0</div></div>
                     </div>
+                    <table class="data-table">
+                        <thead><tr><th>Equipamento</th><th>Status</th><th>Ação</th></tr></thead>
+                        <tbody id="statusTable"></tbody>
+                    </table>
                 </div>
 
-                <div class="panel-section">
-                    <div class="section-title">📋 ÚLTIMOS EVENTOS</div>
-                    <div id="eventList" class="event-list">
-                        <div class="event-item" style="border-left-color:#4ade80">✅ Sistema SCADA com Seccionador inicializado</div>
+                <div class="content-pane" id="pane-alarmes">
+                    <h3>Alarmes</h3>
+                    <div id="alarmList" class="alarm-list"><div class="alarm-item">✅ Nenhum alarme</div></div>
+                </div>
+
+                <div class="content-pane" id="pane-eventos">
+                    <h3>Eventos</h3>
+                    <div id="eventList" class="event-list"></div>
+                    <button class="btn" id="clearEventsBtn"><i class="fas fa-trash"></i> Limpar</button>
+                </div>
+
+                <div class="content-pane" id="pane-controle">
+                    <h3>Controle Manual com Sequência Lógica</h3>
+                    <div class="control-buttons">
+                        <button class="btn" id="seqDesligarBtn"><i class="fas fa-power-off"></i> Sequência de Desligamento</button>
+                        <button class="btn btn-success" id="seqLigarBtn"><i class="fas fa-play"></i> Sequência de Ligação</button>
+                    </div>
+                    <div style="margin:20px 0; background:#1a1a1a; padding:15px; border-radius:12px;">
+                        <h4><i class="fas fa-exclamation-triangle"></i> Regras de Manobra</h4>
+                        <ul style="margin-left:20px; color:#9ca3af; font-size:0.8rem;">
+                            <li>⚠️ <strong>Seccionador NÃO opera em carga</strong> - deve ser manobrado com circuito desenergizado</li>
+                            <li>🔴 Sequência de <strong>DESLIGAMENTO</strong>: Desliga Cargas → Abre Q2 → Abre Seccionador → Abre Q1</li>
+                            <li>🟢 Sequência de <strong>LIGAÇÃO</strong>: Fecha Q1 → Fecha Seccionador → Fecha Q2 → Liga Cargas</li>
+                            <li>📋 Toda manobra crítica requer confirmação do operador</li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-danger" id="emergenciaBtn"><i class="fas fa-stop-circle"></i> PARADA DE EMERGÊNCIA</button>
+                </div>
+
+                <div class="content-pane" id="pane-sobre">
+                    <div style="background:#111; border-radius:12px; padding:25px;">
+                        <h2 style="color:#4ade80;">Projeto SCADA - Subestação</h2>
+                        <p><strong>Equipamentos:</strong> ESP32, Transformador 220/9,7V, Servo, 4 Relés, ACS712.</p>
+                        <p><strong>Regras de Manobra:</strong> Seccionador não opera em carga.</p>
+                        <p><strong>Tecnologias:</strong> Firebase, HTML/CSS/JS, Arduino.</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="footer">
-            <span>⚡ Projeto Feira de Ciências - ESP32 + Servo Seccionador + Firebase</span>
-            <span>🔄 Clique nos botões para controlar</span>
+            <span>⚠️ Seccionador NÃO opera em carga - use as sequências automáticas</span>
+            <span>🔄 Dados em tempo real</span>
         </div>
     </div>
 
-    <script type="module">
-        import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <!-- Modal de Confirmação -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Confirmar Manobra</h3>
+            <p id="modalMessage">Tem certeza que deseja executar esta operação?</p>
+            <div class="modal-buttons">
+                <button class="btn-cancel" id="modalCancel">Cancelar</button>
+                <button class="btn-confirm" id="modalConfirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
-        const database = window.db;
-        let firebaseReady = true;
+    <script>
+        // Estados dos equipamentos
+        let estados = { q1: true, servo: true, q2: true, cc1: false, cc2: false };
+        let measurements = { tensaoEntrada: 220, tensaoSaida: 9.7, corrente: 0 };
+        let events = [{ time: new Date().toLocaleTimeString('pt-BR'), desc: "✅ SCADA inicializado" }];
+        let alarms = [];
+        
+        let firebaseReady = !!window.firebaseReady;
+        let pendingCommand = null;
+        let esp32Online = false;
 
-        let estados = {
-            q1: true,
-            servo: true,
-            q2: true,
-            cc1: false,
-            cc2: false
+        // Atualizar UI
+        function atualizarUI() {
+            const svgIds = ['breakerQ1Rect', 'servoRect', 'breakerQ2Rect', 'cc1Rect', 'cc2Rect'];
+            const estadosArray = [estados.q1, estados.servo, estados.q2, estados.cc1, estados.cc2];
+            svgIds.forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.setAttribute('fill', estadosArray[i] ? '#166534' : '#7f1d1d');
+                    el.setAttribute('stroke', estadosArray[i] ? '#4ade80' : '#ef4444');
+                }
+            });
+            
+            const statusMap = {
+                statusQ1Text: estados.q1 ? 'Fechado' : 'Aberto',
+                statusServoText: estados.servo ? '35° Fechado' : '0° Aberto',
+                statusQ2Text: estados.q2 ? 'Fechado' : 'Aberto',
+                statusCC1Text: estados.cc1 ? 'Ligado' : 'Desligado',
+                statusCC2Text: estados.cc2 ? 'Ligado' : 'Desligado'
+            };
+            for (let [id, text] of Object.entries(statusMap)) {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = `<span class="status-led" style="background:${text.includes('Aberto') || text.includes('Desligado') ? '#ef4444' : '#4ade80'}"></span> ${text}`;
+            }
+            
+            document.getElementById('medTensaoEntrada').innerText = estados.q1 ? measurements.tensaoEntrada : 0;
+            document.getElementById('medTensaoSaida').innerText = (estados.servo && estados.q2) ? measurements.tensaoSaida : 0;
+            document.getElementById('medCorrente').innerText = measurements.corrente.toFixed(2);
+            document.getElementById('medPotencia').innerText = ((measurements.tensaoEntrada * measurements.corrente) / 1000).toFixed(2);
+            
+            // Alarmes
+            if (!estados.q1) addAlarm("🔴 Q1 - Disjuntor geral ABERTO!");
+            else removeAlarm("🔴 Q1 - Disjuntor geral ABERTO!");
+            if (!estados.servo && (estados.q1 || estados.q2)) addAlarm("🔴 Seccionador ABERTO em carga! Risco de arco!");
+            else removeAlarm("🔴 Seccionador ABERTO em carga! Risco de arco!");
+            if (!estados.q2 && estados.servo && estados.q1) addAlarm("🔴 Q2 - Disjuntor de carga ABERTO!");
+            else removeAlarm("🔴 Q2 - Disjuntor de carga ABERTO!");
+        }
+
+        function addEvent(desc) { events.unshift({ time: new Date().toLocaleTimeString('pt-BR'), desc }); if (events.length > 30) events.pop(); renderEvents(); }
+        function addAlarm(msg) { if (!alarms.some(a => a === msg)) { alarms.unshift(msg); renderAlarms(); } }
+        function removeAlarm(msg) { alarms = alarms.filter(a => a !== msg); renderAlarms(); }
+        function renderEvents() { document.getElementById('eventList').innerHTML = events.slice(0,20).map(e => `<div class="event-item"><span class="event-time">${e.time}</span><span>${e.desc}</span></div>`).join(''); }
+        function renderAlarms() { const container = document.getElementById('alarmList'); if (alarms.length === 0) { container.innerHTML = '<div class="alarm-item">✅ Nenhum alarme</div>'; return; } container.innerHTML = alarms.map(a => `<div class="alarm-item"><span class="alarm-active">⚠️ ${a}</span></div>`).join(''); }
+
+        // Enviar comando com confirmação
+        function confirmarManobra(titulo, mensagem, callback) {
+            document.getElementById('modalTitle').innerText = titulo;
+            document.getElementById('modalMessage').innerHTML = mensagem;
+            document.getElementById('confirmModal').classList.add('active');
+            pendingCommand = callback;
+        }
+
+        document.getElementById('modalConfirm').onclick = () => {
+            if (pendingCommand) pendingCommand();
+            document.getElementById('confirmModal').classList.remove('active');
+            pendingCommand = null;
+        };
+        document.getElementById('modalCancel').onclick = () => {
+            document.getElementById('confirmModal').classList.remove('active');
+            addEvent("❌ Manobra cancelada pelo operador");
+            pendingCommand = null;
         };
 
-        let measurements = {
-            tensaoEntrada: 220,
-            tensaoSaida: 9.7,
-            corrente: 0,
-            potencia: 0
-        };
-
-        let events = [];
-
-        function addEvent(msg) {
-            const now = new Date().toLocaleTimeString('pt-BR');
-            events.unshift({ time: now, msg });
-            if (events.length > 15) events.pop();
-            const container = document.getElementById('eventList');
-            container.innerHTML = events.map(e => `
-                <div class="event-item" style="border-left-color:#3b82f6">
-                    <span style="color:#888">[${e.time}]</span> ${e.msg}
-                </div>
-            `).join('');
+        async function enviarComando(cmd, valor) {
+            addEvent(`📤 Comando: ${cmd} = ${valor ? 'LIGAR' : 'DESLIGAR'}`);
+            if (firebaseReady && window.db) {
+                try { await set(ref(window.db, `comandos/${cmd}`), { value: valor, timestamp: Date.now() }); addEvent(`✅ Comando enviado`); } 
+                catch(e) { addEvent(`❌ Erro: ${e.message}`); }
+            } else { addEvent(`⚠️ Modo local: ${cmd} = ${valor ? 'LIGAR' : 'DESLIGAR'}`); executarLocal(cmd, valor); }
         }
 
-        function updateUI() {
-            // Atualizar cores no SVG            const q1Rect = document.getElementById('breakerQ1Rect');
-            const servoRect = document.getElementById('servoRect');
-            const q2Rect = document.getElementById('breakerQ2Rect');
-            const cc1Rect = document.getElementById('cc1Rect');
-            const cc2Rect = document.getElementById('cc2Rect');
-            
-            if (q1Rect) {
-                q1Rect.setAttribute('fill', estados.q1 ? '#166534' : '#7f1d1d');
-                q1Rect.setAttribute('stroke', estados.q1 ? '#4ade80' : '#ef4444');
-            }
-            if (servoRect) {
-                servoRect.setAttribute('fill', estados.servo ? '#166534' : '#7f1d1d');
-                servoRect.setAttribute('stroke', estados.servo ? '#4ade80' : '#ef4444');
-            }
-            if (q2Rect) {
-                q2Rect.setAttribute('fill', estados.q2 ? '#166534' : '#7f1d1d');
-                q2Rect.setAttribute('stroke', estados.q2 ? '#4ade80' : '#ef4444');
-            }
-            if (cc1Rect) {
-                cc1Rect.setAttribute('fill', estados.cc1 ? '#166534' : '#7f1d1d');
-                cc1Rect.setAttribute('stroke', estados.cc1 ? '#4ade80' : '#ef4444');
-            }
-            if (cc2Rect) {
-                cc2Rect.setAttribute('fill', estados.cc2 ? '#166534' : '#7f1d1d');
-                cc2Rect.setAttribute('stroke', estados.cc2 ? '#4ade80' : '#ef4444');
-            }
-            
-            // Atualizar botões
-            document.getElementById('statusQ1').style.background = estados.q1 ? '#4ade80' : '#ef4444';
-            document.getElementById('statusServo').style.background = estados.servo ? '#4ade80' : '#ef4444';
-            document.getElementById('statusQ2').style.background = estados.q2 ? '#4ade80' : '#ef4444';
-            document.getElementById('statusCC1').style.background = estados.cc1 ? '#4ade80' : '#ef4444';
-            document.getElementById('statusCC2').style.background = estados.cc2 ? '#4ade80' : '#ef4444';
-            
-            // Atualizar medições
-            document.getElementById('tensaoEntrada').innerText = estados.q1 ? measurements.tensaoEntrada : 0;
-            document.getElementById('tensaoSaida').innerText = (estados.servo && estados.q2) ? measurements.tensaoSaida : 0;
-            document.getElementById('correnteSensor').innerText = measurements.corrente.toFixed(2);
-            document.getElementById('potencia').innerText = ((measurements.tensaoEntrada * measurements.corrente) / 1000).toFixed(2);
+        function executarLocal(cmd, valor) {
+            if (cmd === "disjuntor_q1") estados.q1 = valor;
+            else if (cmd === "seccionador") estados.servo = valor;
+            else if (cmd === "disjuntor_q2") estados.q2 = valor;
+            else if (cmd === "alimentadores/CC1") estados.cc1 = valor;
+            else if (cmd === "alimentadores/CC2") estados.cc2 = valor;
+            atualizarUI();
         }
 
-        async function enviarComando(comando, valor) {
-            try {
-                const cmdRef = ref(database, `comandos/${comando}`);
-                await set(cmdRef, { value: valor, timestamp: Date.now() });
-                addEvent(`📤 Comando enviado: ${comando} = ${valor ? 'LIGAR' : 'DESLIGAR'}`);
-                console.log(`Comando enviado: ${comando} = ${valor}`);
-            } catch (error) {
-                console.error("Erro ao enviar:", error);
-                addEvent(`❌ Erro ao enviar comando: ${comando}`);
-            }
-        }
-
-        async function toggleQ1() { const novo = !estados.q1; estados.q1 = novo; updateUI(); await enviarComando("disjuntor_q1", novo); }
-        async function toggleServo() { const novo = !estados.servo; estados.servo = novo; updateUI(); await enviarComando("seccionador", novo); }
-        async function toggleQ2() { const novo = !estados.q2; estados.q2 = novo; updateUI(); await enviarComando("disjuntor_q2", novo); }
-        async function toggleCC1() { const novo = !estados.cc1; estados.cc1 = novo; updateUI(); await enviarComando("alimentadores/CC1", novo); }
-        async function toggleCC2() { const novo = !estados.cc2; estados.cc2 = novo; updateUI(); await enviarComando("alimentadores/CC2", novo); }
-
-        function setupListeners() {
-            if (!database) return;
+        // Manobra individual com validação
+        async function toggleEquipamento(equip, acao) {
+            let podeOperar = true;
+            let mensagem = "";
             
-            onValue(ref(database, 'estados/disjuntor_q1'), (snap) => { const val = snap.val(); if (typeof val === 'boolean') { estados.q1 = val; updateUI(); addEvent(`📩 ESP32: Q1 = ${val ? 'LIGADO' : 'DESLIGADO'}`); } });
-            onValue(ref(database, 'estados/seccionador'), (snap) => { const val = snap.val(); if (typeof val === 'boolean') { estados.servo = val; updateUI(); addEvent(`📩 ESP32: Seccionador = ${val ? '35° FECHADO' : '0° ABERTO'}`); } });
-            onValue(ref(database, 'estados/disjuntor_q2'), (snap) => { const val = snap.val(); if (typeof val === 'boolean') { estados.q2 = val; updateUI(); addEvent(`📩 ESP32: Q2 = ${val ? 'LIGADO' : 'DESLIGADO'}`); } });
-            onValue(ref(database, 'sensores/corrente'), (snap) => { const val = snap.val(); if (typeof val === 'number') { measurements.corrente = val; updateUI(); } });
+            if (equip === "servo") {
+                if (acao === "abrir" && (estados.q1 || estados.q2)) {
+                    podeOperar = false;
+                    mensagem = "⚠️ <strong>NÃO É PERMITIDO</strong> abrir o seccionador com carga!<br>Isso causaria arco elétrico e destruiria o equipamento.<br><br>Use a <strong>Sequência de Desligamento</strong> para desenergizar o circuito primeiro.";
+                } else if (acao === "fechar" && !estados.q1) {
+                    podeOperar = false;
+                    mensagem = "⚠️ Não é possível fechar o seccionador com o disjuntor Q1 aberto.<br>Primeiro, feche Q1 para energizar o transformador.";
+                }
+            }
+            
+            if (!podeOperar) {
+                confirmarManobra("OPERAÇÃO BLOQUEADA", mensagem, () => addEvent("❌ Manobra bloqueada por segurança"));
+                return;
+            }
+            
+            const estadoAtual = (equip === "q1") ? estados.q1 : (equip === "servo") ? estados.servo : (equip === "q2") ? estados.q2 : (equip === "cc1") ? estados.cc1 : estados.cc2;
+            const novoEstado = !estadoAtual;
+            const textoAcao = novoEstado ? "LIGAR" : "DESLIGAR";
+            let path = "";
+            if (equip === "q1") path = "disjuntor_q1";
+            else if (equip === "servo") path = "seccionador";
+            else if (equip === "q2") path = "disjuntor_q2";
+            else if (equip === "cc1") path = "alimentadores/CC1";
+            else path = "alimentadores/CC2";
+            
+            confirmarManobra(`Confirmar ${textoAcao}`, `Tem certeza que deseja ${textoAcao} o equipamento <strong>${equip.toUpperCase()}</strong>?`, async () => { await enviarComando(path, novoEstado); });
         }
 
-        document.getElementById('ctrlQ1').addEventListener('click', toggleQ1);
-        document.getElementById('ctrlServo').addEventListener('click', toggleServo);
-        document.getElementById('ctrlQ2').addEventListener('click', toggleQ2);
-        document.getElementById('ctrlCC1').addEventListener('click', toggleCC1);
-        document.getElementById('ctrlCC2').addEventListener('click', toggleCC2);
+        // Sequência de desligamento
+        async function sequenciaDesligamento() {
+            if (!estados.cc1 && !estados.cc2 && !estados.q2 && !estados.servo && !estados.q1) {
+                addEvent("⚠️ Sistema já está totalmente desligado");
+                return;
+            }
+            confirmarManobra("SEQUÊNCIA DE DESLIGAMENTO", 
+                "Esta sequência irá:<br>1. Desligar todas as cargas (CC1, CC2)<br>2. Abrir o disjuntor Q2<br>3. Abrir o seccionador (Servo)<br>4. Abrir o disjuntor geral Q1<br><br><strong>Deseja continuar?</strong>", 
+                async () => {
+                    addEvent("🔴 Iniciando sequência de DESLIGAMENTO");
+                    if (estados.cc1) await enviarComando("alimentadores/CC1", false);
+                    if (estados.cc2) await enviarComando("alimentadores/CC2", false);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (estados.q2) await enviarComando("disjuntor_q2", false);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (estados.servo) await enviarComando("seccionador", false);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (estados.q1) await enviarComando("disjuntor_q1", false);
+                    addEvent("✅ Sequência de DESLIGAMENTO concluída");
+                });
+        }
+
+        // Sequência de ligação
+        async function sequenciaLigacao() {
+            if (estados.q1 && estados.servo && estados.q2) {
+                addEvent("⚠️ Sistema já está totalmente energizado");
+                return;
+            }
+            confirmarManobra("SEQUÊNCIA DE LIGAÇÃO", 
+                "Esta sequência irá:<br>1. Fechar o disjuntor geral Q1<br>2. Fechar o seccionador (Servo)<br>3. Fechar o disjuntor Q2<br>4. Ligar as cargas (CC1, CC2)<br><br><strong>Deseja continuar?</strong>", 
+                async () => {
+                    addEvent("🟢 Iniciando sequência de LIGAÇÃO");
+                    if (!estados.q1) await enviarComando("disjuntor_q1", true);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (!estados.servo) await enviarComando("seccionador", true);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (!estados.q2) await enviarComando("disjuntor_q2", true);
+                    await new Promise(r => setTimeout(r, 500));
+                    if (!estados.cc1) await enviarComando("alimentadores/CC1", true);
+                    if (!estados.cc2) await enviarComando("alimentadores/CC2", true);
+                    addEvent("✅ Sequência de LIGAÇÃO concluída");
+                });
+        }
+
+        // Parada de emergência
+        async function emergencia() {
+            confirmarManobra("PARADA DE EMERGÊNCIA", 
+                "<strong style='color:#ef4444'>ATENÇÃO!</strong><br>Esta operação irá DESLIGAR IMEDIATAMENTE todos os equipamentos.<br><br>Deseja continuar?", 
+                async () => {
+                    addEvent("🚨 PARADA DE EMERGÊNCIA acionada!");
+                    if (estados.cc1) await enviarComando("alimentadores/CC1", false);
+                    if (estados.cc2) await enviarComando("alimentadores/CC2", false);
+                    await new Promise(r => setTimeout(r, 200));
+                    if (estados.q2) await enviarComando("disjuntor_q2", false);
+                    await new Promise(r => setTimeout(r, 200));
+                    if (estados.servo) await enviarComando("seccionador", false);
+                    await new Promise(r => setTimeout(r, 200));
+                    if (estados.q1) await enviarComando("disjuntor_q1", false);
+                    addEvent("✅ Parada de emergência concluída");
+                });
+        }
+
+        // Navegação
+        document.querySelectorAll('.nav-item').forEach(nav => {
+            nav.addEventListener('click', () => {
+                const paneId = nav.getAttribute('data-pane');
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                nav.classList.add('active');
+                document.querySelectorAll('.content-pane').forEach(p => p.classList.remove('active-pane'));
+                document.getElementById(`pane-${paneId}`).classList.add('active-pane');
+            });
+        });
+
+        // Eventos dos botões
+        document.querySelectorAll('[data-cmd]').forEach(btn => {
+            btn.addEventListener('click', () => toggleEquipamento(btn.getAttribute('data-cmd'), 'toggle'));
+        });
+        document.querySelectorAll('.equipamento').forEach(el => {
+            el.addEventListener('click', () => toggleEquipamento(el.getAttribute('data-equip'), 'toggle'));
+        });
+        document.getElementById('seqDesligarBtn')?.addEventListener('click', sequenciaDesligamento);
+        document.getElementById('seqLigarBtn')?.addEventListener('click', sequenciaLigacao);
+        document.getElementById('emergenciaBtn')?.addEventListener('click', emergencia);
+        document.getElementById('clearEventsBtn')?.addEventListener('click', () => { events = []; renderEvents(); addEvent("📋 Eventos limpos"); });
+
+        // Tabela de status dinâmica
+        document.getElementById('statusTable').innerHTML = `
+            <tr><td>Q1 (Disjuntor Geral)</td><td id="statusQ1Text"><span class="status-led" style="background:#4ade80"></span> Fechado</td><td><button class="btn btn-sm" data-cmd="q1">Alternar</button></td></tr>
+            <tr><td>Seccionador (Servo)</td><td id="statusServoText"><span class="status-led" style="background:#4ade80"></span> 35° Fechado</td><td><button class="btn btn-sm" data-cmd="servo">Alternar</button></td></tr>
+            <tr><td>Q2 (Disjuntor Carga)</td><td id="statusQ2Text"><span class="status-led" style="background:#4ade80"></span> Fechado</td><td><button class="btn btn-sm" data-cmd="q2">Alternar</button></td></tr>
+            <tr><td>CC1 (Cooler)</td><td id="statusCC1Text"><span class="status-led" style="background:#ef4444"></span> Desligado</td><td><button class="btn btn-sm" data-cmd="cc1">Alternar</button></td></tr>
+            <tr><td>CC2 (Reserva)</td><td id="statusCC2Text"><span class="status-led" style="background:#ef4444"></span> Desligado</td><td><button class="btn btn-sm" data-cmd="cc2">Alternar</button></td></tr>
+        `;
+        document.querySelectorAll('[data-cmd]').forEach(btn => btn.addEventListener('click', () => toggleEquipamento(btn.getAttribute('data-cmd'), 'toggle')));
+
+        // Simulação de sensores
+        setInterval(() => {
+            if (estados.q1 && estados.servo && estados.q2) measurements.corrente = +(Math.random() * 2.5).toFixed(2);
+            else measurements.corrente = 0;
+            atualizarUI();
+        }, 2000);
+
+        setInterval(() => document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('pt-BR'), 1000);
         
-        setInterval(() => { document.getElementById('liveClock').innerText = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+        // Firebase listeners
+        if (firebaseReady && window.db) {
+            import("https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js").then(({ ref, onValue }) => {
+                onValue(ref(window.db, 'estados/disjuntor_q1'), (s) => { if (typeof s.val() === 'boolean') { estados.q1 = s.val(); atualizarUI(); } });
+                onValue(ref(window.db, 'estados/seccionador'), (s) => { if (typeof s.val() === 'boolean') { estados.servo = s.val(); atualizarUI(); } });
+                onValue(ref(window.db, 'estados/disjuntor_q2'), (s) => { if (typeof s.val() === 'boolean') { estados.q2 = s.val(); atualizarUI(); } });
+                onValue(ref(window.db, 'estados/alimentadores/CC1'), (s) => { if (typeof s.val() === 'boolean') { estados.cc1 = s.val(); atualizarUI(); } });
+                onValue(ref(window.db, 'estados/alimentadores/CC2'), (s) => { if (typeof s.val() === 'boolean') { estados.cc2 = s.val(); atualizarUI(); } });
+                onValue(ref(window.db, 'sensores/corrente'), (s) => { if (typeof s.val() === 'number') { measurements.corrente = s.val(); atualizarUI(); } });
+                addEvent("🔥 Firebase conectado");
+            });
+        } else { addEvent("⚠️ Modo local - Firebase offline"); }
         
-        updateUI();
-        setupListeners();
-        
-        if (database) {
-            document.getElementById('firebaseStatus').innerHTML = '🔥 Firebase OK';
-            document.getElementById('firebaseStatus').style.color = '#4ade80';
-            addEvent('✅ Firebase conectado! Servo seccionador controlado via web app.');
-        } else {
-            document.getElementById('firebaseStatus').innerHTML = '⚠️ Firebase offline';
-            addEvent('⚠️ Modo demonstração ativo.');
-        }
+        atualizarUI();
+        renderEvents();
+        renderAlarms();
     </script>
 </body>
 </html>
